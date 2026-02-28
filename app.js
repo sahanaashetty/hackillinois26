@@ -1,5 +1,38 @@
 const STORAGE_KEY = 'uiuc-cs-planner';
 
+// Prerequisite data loaded from uiuc-prerequisites.csv
+const PREREQ_MAP = {};
+let PREREQS_LOADED = false;
+
+async function loadPrerequisites() {
+  try {
+    const res = await fetch('uiuc-prerequisites.csv');
+    if (!res.ok) return;
+
+    const text = await res.text();
+    const lines = text.split(/\r?\n/).filter(Boolean);
+
+    // Remove header
+    lines.shift();
+
+    lines.forEach(line => {
+      const cols = line.split(',');
+      const course = (cols[0] || '').trim();
+      if (!course) return;
+
+      // Prerequisites start at column index 2 (after count)
+      const prereqs = cols.slice(2).map(s => s.trim()).filter(Boolean);
+      if (prereqs.length === 0) return;
+
+      PREREQ_MAP[course] = prereqs;
+    });
+
+    PREREQS_LOADED = true;
+  } catch (err) {
+    console.error('Failed to load prerequisites', err);
+  }
+}
+
 const CORE_CODES = new Set(CORE_CS.map(c => c.code));
 const MATH_SCIENCE_CODES = new Set(MATH_SCIENCE.map(c => c.code === 'Science elective' ? 'Science elective' : c.code));
 const ORIENT_CODES = new Set(['ENG 100', 'CS 210', 'CS 211']);
@@ -46,6 +79,35 @@ function isTeamProject(code) {
 // State: 8 semesters, each is array of { code, name?, hours? }
 let plan = Array.from({ length: 8 }, () => []);
 
+function getCoursesBeforeSemester(semIdx) {
+  const taken = new Set();
+  for (let i = 0; i < semIdx; i++) {
+    (plan[i] || []).forEach(c => taken.add(c.code));
+  }
+  return taken;
+}
+
+function getPrereqTooltip(code, semIdx) {
+  const prereqs = PREREQ_MAP[code];
+  if (!prereqs || prereqs.length === 0) {
+    return 'No prerequisites listed for this course.';
+  }
+
+  // If we know which semester this chip is in, show which prereqs are missing
+  if (typeof semIdx === 'number') {
+    const taken = getCoursesBeforeSemester(semIdx);
+    const missing = prereqs.filter(p => !taken.has(p));
+
+    if (missing.length === 0) {
+      return `Prerequisites: ${prereqs.join(', ')} (completed)`;
+    }
+
+    return `Prerequisites: ${prereqs.join(', ')} (missing: ${missing.join(', ')})`;
+  }
+
+  return `Prerequisites: ${prereqs.join(', ')}`;
+}
+
 function loadPlan() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -78,9 +140,10 @@ function renderSemesters() {
     const chips = (courses || []).map((c, j) => {
       const code = c.code;
       const hrs = c.hours ?? getHours(code);
+       const tooltip = getPrereqTooltip(code, i).replace(/"/g, '&quot;');
 
       return `
-        <div class="course-chip" data-sem="${i}" data-idx="${j}">
+        <div class="course-chip" data-sem="${i}" data-idx="${j}" title="${tooltip}">
           <span>${code}</span>
           <div class="right">
             <span class="hours">${hrs}h</span>
@@ -176,6 +239,18 @@ function bindButtons() {
 
       if (!code) return;
 
+      // Enforce prerequisites if data is available
+      if (PREREQS_LOADED && PREREQ_MAP[code]) {
+        const taken = getCoursesBeforeSemester(semIdx);
+        const prereqs = PREREQ_MAP[code];
+        const missing = prereqs.filter(p => !taken.has(p));
+
+        if (missing.length > 0) {
+          alert(`Cannot add ${code}.\nMissing prerequisite${missing.length > 1 ? 's' : ''}: ${missing.join(', ')}`);
+          return;
+        }
+      }
+
       plan[semIdx].push({ code, hours: getHours(code) });
 
       document.getElementById('course-select').value = '';
@@ -231,8 +306,9 @@ function renderSampleSequence() {
   ).join('');
 }
 
-function init() {
+async function init() {
   loadPlan();
+  await loadPrerequisites();
   populateDropdowns();
   renderSemesters();
   updateProgress();
