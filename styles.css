@@ -346,3 +346,16 @@ body {
   color: var(--text-muted);
   font-size: 0.9rem;
 }
+
+.year-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 768px) {
+  .year-row {
+    grid-template-columns: 1fr;
+  }
+}

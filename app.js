@@ -70,9 +70,11 @@ function semesterLabel(i) {
 
 function renderSemesters() {
   const container = document.getElementById('semesters');
-  container.innerHTML = plan.map((courses, i) => {
-    const hours = courses.reduce((sum, c) => sum + (c.hours || getHours(c.code)), 0);
-    const chips = courses.map((c, j) => {
+  if (!container) return;
+
+  function semesterHTML(courses, i) {
+    const hours = (courses || []).reduce((sum, c) => sum + (c.hours ?? getHours(c.code)), 0);
+    const chips = (courses || []).map((c, j) => {
       const code = c.code;
       const hrs = c.hours ?? getHours(code);
       return `<span class="course-chip" data-sem="${i}" data-idx="${j}">
@@ -88,17 +90,32 @@ function renderSemesters() {
         </div>
         <div class="semester-courses">${chips || '<span class="text-muted">No courses</span>'}</div>
       </div>`;
-  }).join('');
+  }
 
-  container.querySelectorAll('.course-chip .remove').forEach(btn => {
+  let html = '';
+  for (let year = 0; year < 4; year++) {
+    const fallIdx = year * 2;
+    const springIdx = fallIdx + 1;
+    html += `<div class="year-row">
+      ${semesterHTML(plan[fallIdx] || [], fallIdx)}
+      ${semesterHTML(plan[springIdx] || [], springIdx)}
+    </div>`;
+  }
+
+  container.innerHTML = html;
+
+  container.querySelectorAll('.remove').forEach(btn => {
     btn.addEventListener('click', () => {
       const chip = btn.closest('.course-chip');
-      const sem = +chip.dataset.sem;
-      const idx = +chip.dataset.idx;
-      plan[sem].splice(idx, 1);
-      renderSemesters();
-      updateProgress();
-      savePlan();
+      if (!chip) return;
+      const sem = Number(chip.dataset.sem);
+      const idx = Number(chip.dataset.idx);
+      if (plan[sem]) {
+        plan[sem].splice(idx, 1);
+        renderSemesters();
+        updateProgress();
+        savePlan();
+      }
     });
   });
 }
@@ -196,3 +213,4 @@ if (document.readyState === 'loading') {
 } else {
   init();
 }
+
