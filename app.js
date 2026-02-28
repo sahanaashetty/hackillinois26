@@ -74,32 +74,46 @@ function renderSemesters() {
 
   function semesterHTML(courses, i) {
     const hours = (courses || []).reduce((sum, c) => sum + (c.hours ?? getHours(c.code)), 0);
+
     const chips = (courses || []).map((c, j) => {
       const code = c.code;
       const hrs = c.hours ?? getHours(code);
-      return `<span class="course-chip" data-sem="${i}" data-idx="${j}">
-        ${code} <span class="hours">${hrs}h</span>
-        <button type="button" class="remove" aria-label="Remove">×</button>
-      </span>`;
+
+      return `
+        <div class="course-chip" data-sem="${i}" data-idx="${j}">
+          <span>${code}</span>
+          <div class="right">
+            <span class="hours">${hrs}h</span>
+            <button type="button" class="remove">×</button>
+          </div>
+        </div>
+      `;
     }).join('');
+
     return `
-      <div class="semester-card" data-semester="${i}">
+      <div class="semester-card">
         <div class="semester-header">
           <span>${semesterLabel(i)}</span>
           <span class="semester-hours">${hours} hrs</span>
         </div>
-        <div class="semester-courses">${chips || '<span class="text-muted">No courses</span>'}</div>
-      </div>`;
+        <div class="semester-courses">
+          ${chips || '<span class="text-muted">No courses</span>'}
+        </div>
+      </div>
+    `;
   }
 
   let html = '';
   for (let year = 0; year < 4; year++) {
     const fallIdx = year * 2;
     const springIdx = fallIdx + 1;
-    html += `<div class="year-row">
-      ${semesterHTML(plan[fallIdx] || [], fallIdx)}
-      ${semesterHTML(plan[springIdx] || [], springIdx)}
-    </div>`;
+
+    html += `
+      <div class="year-row">
+        ${semesterHTML(plan[fallIdx] || [], fallIdx)}
+        ${semesterHTML(plan[springIdx] || [], springIdx)}
+      </div>
+    `;
   }
 
   container.innerHTML = html;
@@ -107,15 +121,13 @@ function renderSemesters() {
   container.querySelectorAll('.remove').forEach(btn => {
     btn.addEventListener('click', () => {
       const chip = btn.closest('.course-chip');
-      if (!chip) return;
       const sem = Number(chip.dataset.sem);
       const idx = Number(chip.dataset.idx);
-      if (plan[sem]) {
-        plan[sem].splice(idx, 1);
-        renderSemesters();
-        updateProgress();
-        savePlan();
-      }
+
+      plan[sem].splice(idx, 1);
+      renderSemesters();
+      updateProgress();
+      savePlan();
     });
   });
 }
@@ -141,27 +153,39 @@ function updateProgress() {
 }
 
 function populateDropdowns() {
-  const courseSelect = document.getElementById('course-select');
-  courseSelect.innerHTML = ALL_COURSES.map(c => `<option value="${c.code}">${c.code} — ${c.name}</option>`).join('');
+  const dataList = document.getElementById('course-options');
+  dataList.innerHTML = ALL_COURSES.map(c =>
+    `<option value="${c.code}">${c.code} — ${c.name}</option>`
+  ).join('');
 
   const semSelect = document.getElementById('semester-select');
-  semSelect.innerHTML = plan.map((_, i) => `<option value="${i}">${semesterLabel(i)}</option>`).join('');
+  semSelect.innerHTML = plan.map((_, i) =>
+    `<option value="${i}">${semesterLabel(i)}</option>`
+  ).join('');
 }
 
 function bindButtons() {
   const addBtn = document.getElementById('add-course-btn');
   const clearBtn = document.getElementById('clear-btn');
+  const sampleBtn = document.getElementById('use-sample-btn');
+
   if (addBtn) {
     addBtn.addEventListener('click', () => {
-      const code = document.getElementById('course-select').value;
+      const code = document.getElementById('course-select').value.trim();
       const semIdx = parseInt(document.getElementById('semester-select').value, 10);
-      const hours = getHours(code);
-      plan[semIdx].push({ code, hours });
+
+      if (!code) return;
+
+      plan[semIdx].push({ code, hours: getHours(code) });
+
+      document.getElementById('course-select').value = '';
+
       renderSemesters();
       updateProgress();
       savePlan();
     });
   }
+
   if (clearBtn) {
     clearBtn.addEventListener('click', () => {
       if (confirm('Clear your entire plan?')) {
@@ -173,10 +197,19 @@ function bindButtons() {
     });
   }
 
+  if (sampleBtn) {
+    sampleBtn.addEventListener('click', () => {
+      if (confirm('Replace your current plan with the sample sequence?')) {
+        loadSampleIntoPlan();
+      }
+    });
+  }
+
   document.querySelectorAll('.tab').forEach(tab => {
     tab.addEventListener('click', () => {
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
       document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+
       tab.classList.add('active');
       document.getElementById(tab.dataset.tab).classList.add('active');
     });
@@ -208,9 +241,30 @@ function init() {
   bindButtons();
 }
 
+function loadSampleIntoPlan() {
+  plan = Array.from({ length: 8 }, () => []);
+
+  SAMPLE_SEQUENCE.forEach(s => {
+    const semIdx = (s.year - 1) * 2 + (s.semester === 'Fall' ? 0 : 1);
+
+    s.courses.forEach(label => {
+      const match = label.match(/[A-Z]+ \d{3}|Science elective|Free elective|Gen Ed|Composition I|Language/);
+      if (!match) return;
+
+      const code = match[0];
+      plan[semIdx].push({ code, hours: getHours(code) });
+    });
+  });
+
+  renderSemesters();
+  updateProgress();
+  savePlan();
+}
+
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
 } else {
   init();
 }
+
 

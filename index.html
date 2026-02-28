@@ -39,15 +39,17 @@
         <div class="semesters" id="semesters"></div>
 
         <div class="add-course">
-          <label for="course-select">Add course to semester:</label>
+          <label>Add course to semester</label>
           <div class="add-course-row">
-            <select id="course-select"></select>
+            <input id="course-select" list="course-options" placeholder="Search course..." />
+            <datalist id="course-options"></datalist>
+        
             <select id="semester-select"></select>
-            <button type="button" id="add-course-btn">Add</button>
-            <button type="button" id="clear-btn" class="btn-secondary">Clear plan</button>
+        
+            <button id="add-course-btn">Add</button>
+            <button id="clear-btn" class="btn-secondary">Clear Plan</button>
           </div>
         </div>
-      </section>
 
       <!-- Requirements -->
       <section id="requirements" class="panel">
@@ -76,6 +78,12 @@
           <p>Enough to reach 128 total hours.</p>
         </div>
       </section>
+      
+      <button class="btn-secondary" id="use-sample-btn">
+        Use Sample as My Plan
+      </button>
+      
+      <div id="sample-sequence" class="sample-sequence"></div>
 
       <!-- Sample Sequence -->
       <section id="sample" class="panel">
