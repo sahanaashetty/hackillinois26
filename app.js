@@ -1,36 +1,60 @@
 const STORAGE_KEY = 'uiuc-cs-planner';
 
-// Prerequisite data loaded from uiuc-prerequisites.csv
+// Prerequisite data from cs_prerequisites_uiuc.csv
+// Keys: course code with space (e.g. "CS 225"). Values: array of groups; each group is OR, groups are AND.
 const PREREQ_MAP = {};
 let PREREQS_LOADED = false;
 
+function normalizeCourseCode(raw) {
+  const m = (raw || '').trim().match(/^([A-Z]+)\s*(\d+)$/i) || (raw || '').trim().match(/^([A-Z]+)(\d+)$/i);
+  return m ? `${m[1].toUpperCase()} ${m[2]}` : (raw || '').trim();
+}
+
 async function loadPrerequisites() {
   try {
-    const res = await fetch('uiuc-prerequisites.csv');
+    const res = await fetch('cs_prerequisites_uiuc.csv');
     if (!res.ok) return;
 
     const text = await res.text();
     const lines = text.split(/\r?\n/).filter(Boolean);
 
-    // Remove header
-    lines.shift();
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const cols = parseCSVLine(line);
+      if (i === 0 && (cols[0] || '').toLowerCase() === 'course') continue;
+      const courseRaw = (cols[0] || '').trim();
+      if (!courseRaw) continue;
 
-    lines.forEach(line => {
-      const cols = line.split(',');
-      const course = (cols[0] || '').trim();
-      if (!course) return;
+      const course = normalizeCourseCode(courseRaw);
+      const prereqStr = (cols[1] || '').trim();
+      if (!prereqStr || /^varies$/i.test(prereqStr)) continue;
 
-      // Prerequisites start at column index 2 (after count)
-      const prereqs = cols.slice(2).map(s => s.trim()).filter(Boolean);
-      if (prereqs.length === 0) return;
+      // Groups separated by " || " (AND); within group "|" (OR)
+      const groups = prereqStr.split(/\s*\|\|\s*/).map(g => 
+        g.split('|').map(s => normalizeCourseCode(s.trim())).filter(Boolean)
+      ).filter(g => g.length > 0);
 
-      PREREQ_MAP[course] = prereqs;
-    });
+      if (groups.length > 0) PREREQ_MAP[course] = groups;
+    }
 
     PREREQS_LOADED = true;
   } catch (err) {
     console.error('Failed to load prerequisites', err);
   }
+}
+
+function parseCSVLine(line) {
+  const out = [];
+  let cur = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') inQuotes = !inQuotes;
+    else if ((ch === ',' && !inQuotes) || ch === '\n') { out.push(cur); cur = ''; }
+    else cur += ch;
+  }
+  out.push(cur);
+  return out;
 }
 
 const CORE_CODES = new Set(CORE_CS.map(c => c.code));
@@ -87,25 +111,42 @@ function getCoursesBeforeSemester(semIdx) {
   return taken;
 }
 
+function formatPrereqGroups(groups) {
+  return groups.map(g => g.length === 1 ? g[0] : `(${g.join(' or ')})`).join(' and ');
+}
+
 function getPrereqTooltip(code, semIdx) {
-  const prereqs = PREREQ_MAP[code];
-  if (!prereqs || prereqs.length === 0) {
-    return 'No prerequisites listed for this course.';
+  const groups = PREREQ_MAP[code];
+  if (!groups || groups.length === 0) {
+    return 'No prerequisites for this course.';
   }
 
-  // If we know which semester this chip is in, show which prereqs are missing
-  if (typeof semIdx === 'number') {
-    const taken = getCoursesBeforeSemester(semIdx);
-    const missing = prereqs.filter(p => !taken.has(p));
+  const text = formatPrereqGroups(groups);
+  if (typeof semIdx !== 'number') return `Prerequisites: ${text}`;
 
-    if (missing.length === 0) {
-      return `Prerequisites: ${prereqs.join(', ')} (completed)`;
-    }
+  const taken = getCoursesBeforeSemester(semIdx);
+  const satisfied = groups.every(grp => grp.some(c => taken.has(c)));
+  if (satisfied) return `Prerequisites: ${text} (completed)`;
 
-    return `Prerequisites: ${prereqs.join(', ')} (missing: ${missing.join(', ')})`;
-  }
+  const missingGroups = groups.filter(grp => !grp.some(c => taken.has(c)));
+  const missing = missingGroups.map(grp => grp.length === 1 ? grp[0] : `one of: ${grp.join(', ')}`).join('; ');
+  return `Prerequisites: ${text} (missing: ${missing})`;
+}
 
-  return `Prerequisites: ${prereqs.join(', ')}`;
+function prereqsSatisfied(code, semIdx) {
+  const groups = PREREQ_MAP[code];
+  if (!groups || groups.length === 0) return true;
+  const taken = getCoursesBeforeSemester(semIdx);
+  return groups.every(grp => grp.some(c => taken.has(c)));
+}
+
+function prereqsMissingMessage(code, semIdx) {
+  const groups = PREREQ_MAP[code];
+  if (!groups || groups.length === 0) return null;
+  const taken = getCoursesBeforeSemester(semIdx);
+  const missingGroups = groups.filter(grp => !grp.some(c => taken.has(c)));
+  if (missingGroups.length === 0) return null;
+  return missingGroups.map(grp => grp.length === 1 ? grp[0] : `one of: ${grp.join(', ')}`).join('; ');
 }
 
 function loadPlan() {
@@ -239,14 +280,11 @@ function bindButtons() {
 
       if (!code) return;
 
-      // Enforce prerequisites if data is available
-      if (PREREQS_LOADED && PREREQ_MAP[code]) {
-        const taken = getCoursesBeforeSemester(semIdx);
-        const prereqs = PREREQ_MAP[code];
-        const missing = prereqs.filter(p => !taken.has(p));
-
-        if (missing.length > 0) {
-          alert(`Cannot add ${code}.\nMissing prerequisite${missing.length > 1 ? 's' : ''}: ${missing.join(', ')}`);
+      // Enforce prerequisites from cs_prerequisites_uiuc.csv
+      if (PREREQS_LOADED && !prereqsSatisfied(code, semIdx)) {
+        const msg = prereqsMissingMessage(code, semIdx);
+        if (msg) {
+          alert(`Cannot add ${code}.\nMissing prerequisite(s) — add to an earlier semester first: ${msg}`);
           return;
         }
       }
