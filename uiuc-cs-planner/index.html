@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UIUC CS Class Planner</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <h1>UIUC CS Class Planner</h1>
+      <p class="subtitle">Plan your Computer Science BS — 128 hours · <a href="https://catalog.illinois.edu/undergraduate/engineering/computer-science-bs/#samplesequencetext" target="_blank" rel="noopener">Catalog</a></p>
+    </header>
+
+    <nav class="tabs">
+      <button type="button" class="tab active" data-tab="plan">My Plan</button>
+      <button type="button" class="tab" data-tab="requirements">Requirements</button>
+      <button type="button" class="tab" data-tab="sample">Sample Sequence</button>
+    </nav>
+
+    <main class="content">
+      <!-- My Plan -->
+      <section id="plan" class="panel active">
+        <div class="progress-card">
+          <h3>Progress</h3>
+          <div class="progress-stats">
+            <div class="stat"><span class="stat-value" id="total-hours">0</span><span class="stat-label">/ 128 hrs</span></div>
+            <div class="stat"><span class="stat-value" id="core-done">0</span><span class="stat-label">/ 11 core CS</span></div>
+            <div class="stat"><span class="stat-value" id="tech-elective-count">0</span><span class="stat-label">/ 6 tech electives</span></div>
+            <div class="stat"><span class="stat-value" id="tech-elective-hrs">0</span><span class="stat-label">/ 18 tech hrs</span></div>
+            <div class="stat"><span class="stat-value" id="adv-elective-count">0</span><span class="stat-label">/ 2 advanced</span></div>
+          </div>
+        </div>
+
+        <div class="semesters" id="semesters"></div>
+
+        <div class="add-course">
+          <label for="course-select">Add course to semester:</label>
+          <div class="add-course-row">
+            <select id="course-select"></select>
+            <select id="semester-select"></select>
+            <button type="button" id="add-course-btn">Add</button>
+            <button type="button" id="clear-btn" class="btn-secondary">Clear plan</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Requirements -->
+      <section id="requirements" class="panel">
+        <div class="req-section">
+          <h3>Core CS (35 hrs)</h3>
+          <ul class="course-list" id="req-core"></ul>
+        </div>
+        <div class="req-section">
+          <h3>Math & Science (25 hrs)</h3>
+          <ul class="course-list" id="req-math"></ul>
+        </div>
+        <div class="req-section">
+          <h3>Orientation (3–4 hrs)</h3>
+          <ul class="course-list" id="req-orient"></ul>
+        </div>
+        <div class="req-section">
+          <h3>Technical Electives</h3>
+          <p>Min 6 courses, 18+ hrs. One must be a team project course. Three must be from one focus area.</p>
+        </div>
+        <div class="req-section">
+          <h3>Advanced Electives</h3>
+          <p>Min 2 courses, 6+ hrs (400-level, any department).</p>
+        </div>
+        <div class="req-section">
+          <h3>Free Electives</h3>
+          <p>Enough to reach 128 total hours.</p>
+        </div>
+      </section>
+
+      <!-- Sample Sequence -->
+      <section id="sample" class="panel">
+        <p class="sample-note">Reference only. Work with your advisor for your actual plan.</p>
+        <div class="sample-sequence" id="sample-sequence"></div>
+      </section>
+    </main>
+  </div>
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
