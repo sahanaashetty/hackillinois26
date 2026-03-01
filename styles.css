@@ -1,12 +1,13 @@
 :root {
-  --bg: #0f0f12;
-  --surface: #18181c;
-  --surface2: #222228;
-  --border: #2e2e36;
-  --text: #e4e4e7;
-  --text-muted: #a1a1aa;
-  --accent: #7c3aed;
-  --accent-hover: #8b5cf6;
+  /* Darkest = bg; blues scaled from it; accent = terracotta orange */
+  --bg: #0a1628;
+  --surface: #0d1e38;
+  --surface2: #13294b;
+  --border: #1a3360;
+  --text: #e8ecf4;
+  --text-muted: #8fa3c4;
+  --accent: #c3693b;
+  --accent-hover: #d0784a;
   --success: #22c55e;
   --warning: #eab308;
   --radius: 10px;
@@ -66,7 +67,10 @@ body {
   color: var(--text-muted);
 }
 
-.major-select {
+/* Shared dropdown/input look */
+.major-select,
+.plan-right .add-course-row input#course-select,
+.plan-right .add-course-row select#semester-select {
   padding: 0.5rem 0.75rem;
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -74,8 +78,16 @@ body {
   color: var(--text);
   font-family: var(--font);
   font-size: 0.9rem;
+}
+.major-select {
   min-width: 220px;
   max-width: 100%;
+}
+.plan-right .add-course-row input#course-select,
+.plan-right .add-course-row select#semester-select {
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .catalog-link {
@@ -190,7 +202,7 @@ body {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: conic-gradient(#fff 0% var(--pct, 0%), rgba(255, 255, 255, 0.12) var(--pct, 0%) 100%);
+  background: conic-gradient(var(--accent) 0% var(--pct, 0%), var(--border) var(--pct, 0%) 100%);
 }
 
 .progress-pie-pct {
@@ -241,20 +253,20 @@ body {
 }
 
 .semester-card.past-semester {
-  background: #121216;
-  border-color: #25252d;
+  background: var(--bg);
+  border-color: var(--surface);
 }
 
 .semester-card.past-semester .semester-header {
-  background: #1a1a20;
+  background: var(--surface);
 }
 
 .semester-card.past-semester .semester-courses {
-  background: #121216;
+  background: var(--bg);
 }
 
 .semester-card.past-semester .course-chip {
-  background: #1a1a20;
+  background: var(--surface);
 }
 
 .semester-header {
@@ -288,15 +300,17 @@ body {
   padding: 0.2rem;
   border: none;
   background: transparent;
-  color: #fff;
+  color: var(--text-muted);
   cursor: pointer;
   font-size: 1rem;
   line-height: 1;
   border-radius: 4px;
 }
-
+.lock-btn .lock-icon {
+  display: block;
+}
 .lock-btn:hover {
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--text);
   background: var(--border);
 }
 
@@ -455,12 +469,6 @@ body {
 .plan-right .add-course-row {
   flex-direction: column;
 }
-.plan-right .add-course-row input#course-select,
-.plan-right .add-course-row select#semester-select {
-  min-width: 0;
-  width: 100%;
-  box-sizing: border-box;
-}
 .plan-right .add-course-buttons {
   display: flex;
   gap: 0.5rem;
@@ -478,9 +486,11 @@ body {
   margin-bottom: 1rem;
 }
 
+.add-course-label,
 .add-course label {
   display: block;
   font-size: 0.85rem;
+  font-weight: 700;
   color: var(--text-muted);
   margin-bottom: 0.5rem;
 }
