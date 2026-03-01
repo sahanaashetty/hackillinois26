@@ -1,105 +1,90 @@
-course,prereq_and_groups,notes
-
-CS100,,
-CS101,,
-CS105,,
-CS124,,Three years of high school math
-CS125,,Three years of high school math
-
-CS126,CS125,
-CS128,CS124,
-
-CS173,(CS124 || CS125 || ECE220) & (MATH220 || MATH221),
-
-CS196,CS124 || CS125,Varies by section
-CS199,,Instructor approval required
-
-CS210,,
-CS211,CS124 || CS125,
-CS222,CS124 || CS125,
-
-CS225,(CS124 & CS128) & (CS173 || CS413 || MATH213 || MATH314 || MATH347 || MATH412 || MATH413),
-
-CS233,CS124 || CS125 || ECE220,
-
-CS240,CS225,
-CS241,CS225,
-CS242,CS225,
-
-CS277,CS173,
-CS296,CS225,
-CS341,CS225,
-
-CS357,CS225 || MATH257,
-CS361,CS225,
-
-CS374,CS173 & CS225,
-
-CS409,CS225,
-CS410,CS225,
-CS411,CS225,
-CS412,CS225,
-CS414,CS225,
-
-CS418,CS225,
-
-CS420,CS225,
-CS421,CS225,
-CS422,CS225,
-CS423,CS225,
-
-CS425,CS241,
-CS426,CS225,
-CS427,CS225,
-CS429,CS225,
-
-CS433,CS233 || CS241,
-
-CS434,CS225,
-CS436,CS225,
-
-CS438,CS241,
-CS439,CS241,
-
-CS440,CS225,
-CS441,CS225,
-CS442,CS225,
-CS443,CS241,
-
-CS444,CS440,
-CS445,CS225,
-CS446,CS225 || MATH257,
-
-CS447,CS440,
-CS448,CS440 || CS441,
-
-CS450,CS225,
-CS453,CS374,
-
-CS460,CS225,
-CS461,CS225,
-
-CS463,CS374,
-CS465,CS374,
-CS466,CS374,
-CS467,CS374,
-CS469,CS374,
-CS471,CS374,
-CS473,CS374,
-CS474,CS374,
-
-CS475,CS374,
-CS476,CS374,
-CS477,CS374,
-
-CS481,CS225,
-CS482,CS225,
-CS483,CS225,
-CS484,CS225,
-
-CS491,Varies,Instructor approval required
-CS492,Varies,Instructor approval required
-CS493,Varies,Instructor approval required
-CS494,Varies,Instructor approval required
-CS497,Varies,Instructor approval required
-CS498,Varies,Instructor approval required
+course,prereq_groups,notes
+CS 100,[], ""
+CS 101,"[[ ""MATH 220"",""MATH 221"",""MATH 231"",""MATH 241"" ]]", ""
+CS 105,"[[ ""MATH 112"",""MATH 115"",""MATH 220"",""MATH 221"" ]]", ""
+CS 124,"[[ ""MATH 112"",""MATH 115"",""MATH 220"",""MATH 221"" ]]", ""
+CS 125,"[[ ""MATH 112"",""MATH 115"",""MATH 220"",""MATH 221"" ]]", ""
+CS 126,"[[ ""CS 124"",""CS 125"" ]]", ""
+CS 128,"[[ ""CS 124"",""CS 125"" ]]", ""
+CS 173,"[[ ""MATH 220"",""MATH 221"" ]]", ""
+CS 196,[], "Concurrent enrollment in another CS course required"
+CS 199,[], ""
+CS 210,"[[ ""CS 225"" ]]", "Junior standing required"
+CS 211,"[[ ""CS 225"" ]]", ""
+CS 222,"[[ ""CS 128"" ],[ ""CS 225"" ]]", "CS majors only; CS 225 may be concurrent"
+CS 225,"[[ ""CS 126"",""CS 128"",""ECE 220"" ],[ ""CS 173"",""CS 413"",""MATH 213"",""MATH 314"",""MATH 347"",""MATH 412"",""MATH 413"" ]]", ""
+CS 233,"[[ ""CS 125"",""CS 128"" ],[ ""CS 173"",""MATH 213"" ],[ ""CS 225"" ]]", "CS 225 may be concurrent"
+CS 242,"[[ ""CS 241"" ]]", ""
+CS 265,[], ""
+CS 266,[], ""
+CS 277,"[[ ""STAT 207"" ],[ ""MATH 220"",""MATH 221"",""MATH 234"" ]]", "Cannot be taken concurrently with CS 225"
+CS 296,"[[ ""200-level CS course (concurrent)"" ]]", ""
+CS 307,"[[ ""STAT 207"" ],[ ""MATH 225"",""MATH 227"",""MATH 257"",""MATH 415"",""MATH 416"",""ASRM 406"" ]]", ""
+CS 340,"[[ ""CS 128"" ],[ ""CS 225"" ]]", ""
+CS 341,"[[ ""CS 225"" ],[ ""CS 233"" ]]", ""
+CS 357,"[[ ""CS 101"",""CS 105"",""CS 124"",""CS 125"",""ECE 220"" ],[ ""MATH 241"" ],[ ""MATH 225"",""MATH 227"",""MATH 257"",""MATH 415"",""MATH 416"",""ASRM 406"",""BIOE 210"" ]]", ""
+CS 361,"[[ ""MATH 220"",""MATH 221"" ],[ ""MATH 225"",""MATH 257"",""MATH 415"",""MATH 416"",""ASRM 406"" ]]", "Majors only"
+CS 374,"[[ ""CS 173"",""MATH 213"" ],[ ""CS 225"" ]]", ""
+CS 397,[], ""
+CS 398,[], ""
+CS 407,[], "See ECE 407"
+CS 409,"[[ ""CS 225"" ]]", ""
+CS 410,"[[ ""CS 225"" ]]", ""
+CS 411,"[[ ""CS 225"" ]]", ""
+CS 412,"[[ ""CS 225"" ]]", ""
+CS 413,"[[ ""MATH 413"" ]]", "Cross-listed"
+CS 414,"[[ ""CS 240"",""CS 241"",""CS 340"",""CS 341"",""ECE 391"" ]]", ""
+CS 415,"[[ ""CS 225"" ]]", ""
+CS 416,"[[ ""CS 225"" ]]", ""
+CS 417,"[[ ""CS 225"" ]]", ""
+CS 418,"[[ ""CS 225"" ],[ ""MATH 225"",""MATH 257"",""MATH 415"",""MATH 416"",""ASRM 406"",""BIOE 210"" ],[ ""MATH 241"" ]]", ""
+CS 419,"[[ ""CS 418"",""CSE 427"" ]]", ""
+CS 420,"[[ ""CS 225"" ]]", ""
+CS 421,"[[ ""CS 233"",""CS 240"",""CS 340"",""ECE 391"" ],[ ""CS 374"",""ECE 374"" ],[ ""MATH 225"",""MATH 257"",""MATH 415"",""MATH 416"",""ASRM 406"",""BIOE 210"" ]]", ""
+CS 422,"[[ ""CS 421"" ]]", ""
+CS 423,"[[ ""CS 241"",""CS 341"",""ECE 391"" ]]", ""
+CS 424,"[[ ""CS 241"",""CS 341"",""ECE 391"" ]]", ""
+CS 425,"[[ ""CS 240"",""CS 241"",""CS 340"",""CS 341"",""ECE 391"" ]]", "CS 240/241/340/341 may be concurrent"
+CS 426,"[[ ""CS 421"" ]]", "CS 421 may be concurrent"
+CS 427,"[[ ""CS 222"",""CS 240"",""CS 241"",""CS 340"",""CS 341"",""ECE 391"" ]]", ""
+CS 428,"[[ ""CS 427"",""CSE 426"" ]]", ""
+CS 429,"[[ ""CS 427"",""CSE 426"" ]]", ""
+CS 431,"[[ ""CS 241"",""CS 341"",""ECE 391"" ]]", ""
+CS 433,"[[ ""CS 233"" ]]", ""
+CS 435,"[[ ""CS 240"",""CS 241"",""CS 340"",""CS 341"",""ECE 391"" ]]", ""
+CS 436,"[[ ""CS 240"",""CS 241"",""CS 340"",""CS 341"",""ECE 391"" ]]", ""
+CS 437,"[[ ""CS 241"",""CS 341"" ]]", ""
+CS 438,"[[ ""CS 241"",""CS 341"",""ECE 391"" ]]", ""
+CS 440,"[[ ""CS 225"" ],[ ""CS 361"",""STAT 361"",""ECE 313"",""MATH 362"",""MATH 461"",""MATH 463"",""STAT 400"",""BIOE 310"" ]]", ""
+CS 441,"[[ ""CS 225"",""CS 277"" ],[ ""CS 361"",""STAT 361"",""ECE 313"",""BIOE 310"",""MATH 362"",""MATH 461"",""MATH 463"",""STAT 400"" ]]", ""
+CS 442,"[[ ""CS 225"" ],[ ""CS 440"",""ECE 448"",""CS 441"",""CS 446"",""ECE 449"" ],[ ""MATH 225"",""MATH 257"",""MATH 415"",""MATH 416"",""ASRM 406"",""BIOE 210"" ]]", ""
+CS 443,"[[ ""CS 225"" ],[ ""MATH 241"" ],[ ""MATH 225"",""MATH 257"",""MATH 415"",""MATH 416"",""ASRM 406"",""BIOE 210"" ],[ ""CS 361"",""STAT 361"",""ECE 313"",""MATH 362"",""MATH 461"",""MATH 463"",""STAT 400"" ]]", ""
+CS 444,"[[ ""MATH 241"" ],[ ""MATH 225"",""MATH 257"",""MATH 415"",""MATH 416"",""ASRM 406"",""BIOE 210"" ],[ ""CS 225"" ],[ ""CS 361"",""STAT 361"",""ECE 313"",""MATH 362"",""MATH 461"",""MATH 463"",""STAT 400"" ]]", ""
+CS 445,"[[ ""CS 225"" ],[ ""MATH 225"" ],[ ""MATH 231"" ]]", ""
+CS 446,"[[ ""CS 225"" ],[ ""MATH 225"",""MATH 257"",""MATH 415"",""MATH 416"",""ASRM 406"",""BIOE 210"" ],[ ""CS 361"",""STAT 361"",""ECE 313"",""MATH 362"",""MATH 461"",""MATH 463"",""STAT 400"",""BIOE 310"" ]]", ""
+CS 447,"[[ ""CS 173"",""MATH 213"" ],[ ""CS 225"" ],[ ""CS 374"",""ECE 374"" ],[ ""CS 361"",""STAT 361"",""ECE 313"",""MATH 362"",""MATH 461"",""MATH 463"",""STAT 400"",""BIOE 310"" ],[ ""MATH 225"",""MATH 257"",""MATH 415"",""MATH 416"",""ASRM 406"",""BIOE 210"" ]]", ""
+CS 448,"[[ ""CS 240"",""CS 241"",""CS 340"",""CS 341"",""ECE 391"" ],[ ""MATH 225"",""MATH 257"",""MATH 415"",""MATH 416"",""ASRM 406"",""BIOE 210"" ]]", ""
+CS 450,"[[ ""CS 101"",""CS 124"",""CS 125"" ],[ ""CS 357"",""MATH 257"",""MATH 357"",""MATH 415"",""MATH 416"" ],[ ""MATH 285"" ]]", ""
+CS 452,"[[ ""CS 128"",""ECE 220"" ],[ ""CS 225"" ],[ ""CS 241"",""CS 341"",""ECE 391"" ]]", ""
+CS 460,"[[ ""CS 461"",""ECE 422"" ],[ ""CS 463"" ],[ ""CS 340"",""CS 341"",""ECE 391"" ]]", ""
+CS 461,"[[ ""CS 241"",""CS 341"",""ECE 391"" ],[ ""CS 233"",""CS 340"" ]]", ""
+CS 462,"[[ ""CS 340"",""CS 341"",""ECE 391"" ]]", ""
+CS 463,"[[ ""CS 225"" ],[ ""CS 361"",""STAT 361"",""ECE 313"",""MATH 362"",""MATH 461"",""MATH 463"",""STAT 400"" ]]", ""
+CS 464,"[[ ""CS 225"" ],[ ""CS 210"",""CS 211"",""ECE 316"",""PHIL 316"" ],[ ""CS 361"",""STAT 400"",""STAT 200"" ]]", "Senior standing"
+CS 465,"[[ ""CS 225"" ]]", ""
+CS 466,"[[ ""CS 225"" ]]", ""
+CS 467,"[[ ""CS 225"" ]]", ""
+CS 468,[], ""
+CS 469,"[[ ""CS 173"" ],[ ""CS 225"" ],[ ""MATH 225"",""MATH 257"",""MATH 415"",""MATH 416"",""ASRM 406"",""BIOE 210"" ],[ ""CS 361"",""STAT 361"",""ECE 313"",""MATH 362"",""MATH 461"",""MATH 463"",""STAT 400"" ]]", ""
+CS 473,"[[ ""CS 374"",""ECE 374"" ],[ ""CS 361"",""STAT 361"",""ECE 313"",""MATH 362"",""MATH 461"",""MATH 463"",""STAT 400"" ]]", ""
+CS 474,"[[ ""CS 173"" ],[ ""CS 225"" ],[ ""CS 374"",""ECE 374"" ]]", ""
+CS 475,"[[ ""CS 374"",""ECE 374"" ]]", ""
+CS 476,"[[ ""CS 225"" ],[ ""CS 374"",""ECE 374"",""MATH 414"" ]]", ""
+CS 477,"[[ ""CS 225"" ],[ ""CS 374"",""ECE 374"",""MATH 414"" ]]", ""
+CS 478,"[[ ""CS 225"" ],[ ""MATH 257"",""MATH 415"",""MATH 416"" ],[ ""CS 361"",""STAT 361"",""ECE 313"",""MATH 362"",""MATH 461"",""MATH 463"",""STAT 400"",""PHYS 214"",""PHYS 486"" ]]", ""
+CS 481,[], ""
+CS 482,[], ""
+CS 483,[], ""
+CS 484,"[[ ""CS 241"",""CS 341"" ]]", ""
+CS 498,[], ""
+CS 499,[], ""
