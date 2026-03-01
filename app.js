@@ -1210,12 +1210,22 @@ function loadSampleIntoPlan() {
     const semIdx = (s.year - 1) * 2 + (s.semester === 'Fall' ? 0 : 1);
 
     s.courses.forEach(label => {
-      const match = label.match(/[A-Z]+ \d{3}|Science elective|Free elective|Gen Ed|Composition I|Language|CS Technical elective|CS Advanced elective/);
-      if (!match) return;
+      const labelNorm = label.trim();
+      const isTechPlaceholder = /CS Technical [Ee]lective/i.test(labelNorm);
+      const isAdvPlaceholder = /CS Advanced [Ee]lective/i.test(labelNorm);
+      const match = label.match(/[A-Z]+ \d{3}|Science elective|Free elective|Gen Ed|Composition I|Language|CS Technical [Ee]lective|CS Advanced [Ee]lective/i);
+      if (!match && !isTechPlaceholder && !isAdvPlaceholder) return;
 
-      let code = ensureCourseCode(match[0]);
-      if (match[0] === 'Gen Ed') code = label;
-      if (match[0] === 'CS Technical elective' || match[0] === 'CS Advanced elective') code = match[0];
+      let code;
+      if (isTechPlaceholder) {
+        code = 'CS Technical elective';
+      } else if (isAdvPlaceholder) {
+        code = 'CS Advanced elective';
+      } else if (match[0] === 'Gen Ed' || (match && /Gen Ed/i.test(match[0]))) {
+        code = label;
+      } else {
+        code = ensureCourseCode(match ? match[0] : label);
+      }
       plan[semIdx].push({ code, hours: getHours(code) });
     });
   });
