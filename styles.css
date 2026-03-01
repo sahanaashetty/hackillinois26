@@ -158,7 +158,7 @@ body {
 }
 
 .plan-right {
-  width: 200px;
+  width: 280px;
   flex-shrink: 0;
 }
 
@@ -190,6 +190,7 @@ body {
 }
 
 .progress-pie-pct {
+  display: none;
   position: absolute;
   font-family: var(--font-mono);
   font-size: 0.7rem;
@@ -456,8 +457,21 @@ body {
   width: 100%;
   box-sizing: border-box;
 }
+.plan-right .add-course-buttons {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+}
+.plan-right .add-course-buttons #add-course-btn,
+.plan-right .add-course-buttons #clear-btn {
+  flex: 1;
+  min-width: 0;
+  box-sizing: border-box;
+  font-size: 0.8rem;
+}
 .add-course {
   padding: 0;
+  margin-bottom: 1rem;
 }
 
 .add-course label {
@@ -467,70 +481,56 @@ body {
   margin-bottom: 0.5rem;
 }
 
-/* Technical electives by category (right column) – styled like semester card */
+/* Technical electives by category (right column) */
 .tech-electives-by-category {
-  margin-top: 1rem;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  overflow: hidden;
-}
-
-.tech-electives-by-category .tech-electives-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.3rem 0.6rem;
-  background: var(--surface2);
-  font-weight: 600;
-  font-size: 0.85rem;
-}
-
-.tech-electives-by-category .tech-electives-body {
-  padding: 0.3rem 0.6rem;
+  margin-top: 1.5rem;
 }
 
 .tech-electives-by-category h3 {
-  margin: 0;
+  margin: 0 0 0.5rem 0;
   font-size: 0.9rem;
   font-weight: 600;
 }
 
-.tech-electives-by-category label {
-  display: block;
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  margin-bottom: 0.25rem;
+.tech-category-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
 }
 
-#tech-category-select {
-  width: 100%;
-  padding: 0.3rem 0.5rem;
+.tech-category-option {
+  padding: 0.25rem 0.5rem;
   border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--surface2);
   color: var(--text);
   font-family: var(--font);
   font-size: 0.8rem;
-  margin-bottom: 0.5rem;
+  cursor: pointer;
 }
 
-#tech-category-select option {
-  padding: 0.15rem 0;
+.tech-category-option:hover {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
-#tech-category-select option:checked {
+.tech-category-option.selected {
   background: var(--accent);
+  border-color: var(--accent);
   color: white;
 }
 
-#add-technicals-btn,
-#add-advanced-btn {
-  width: 100%;
+.tech-electives-buttons {
+  display: flex;
+  gap: 0.5rem;
   margin-bottom: 0.5rem;
 }
-#add-advanced-btn {
-  margin-bottom: 0.5rem;
+.tech-electives-buttons #add-technicals-btn,
+.tech-electives-buttons #add-advanced-btn {
+  flex: 1;
+  margin-bottom: 0;
+  font-size: 0.8rem;
 }
 
 .tech-electives-list {

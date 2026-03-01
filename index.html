@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>UIUC Major Class Planner</title>
+  <title>Illini Planner</title>
   <link rel="stylesheet" href="styles.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -13,7 +13,7 @@
   <div class="app">
     <header class="header">
       <div class="header-left">
-        <h1>UIUC Major Class Planner</h1>
+        <h1>Illini Planner</h1>
         <div class="major-select-row">
           <label for="major-select" class="major-select-label">Major</label>
           <select id="major-select" class="major-select"></select>
@@ -44,7 +44,7 @@
               <h3>Progress</h3>
               <div class="progress-pie-wrap">
                 <div class="progress-pie" id="progress-pie" role="img" aria-label="Completion percentage"></div>
-                <span class="progress-pie-pct" id="progress-pie-pct">0%</span>
+                <span class="progress-pie-pct" id="progress-pie-pct">0</span>
               </div>
               <div class="progress-stats" id="progress-stats">
                 <div class="stat"><span class="stat-value" id="total-hours">0</span><span class="stat-label" id="total-hours-label">/ 128 hrs</span></div>
@@ -61,21 +61,20 @@
                 <input id="course-select" list="course-options" placeholder="Search course..." />
                 <datalist id="course-options"></datalist>
                 <select id="semester-select"></select>
-                <button id="add-course-btn">Add class</button>
-                <button id="clear-btn" class="btn-secondary">Clear Plan</button>
+                <div class="add-course-buttons">
+                  <button id="add-course-btn">Add Class</button>
+                  <button id="clear-btn" class="btn-secondary">Clear Plan</button>
+                </div>
               </div>
             </div>
             <div class="tech-electives-by-category">
-              <div class="tech-electives-header">
-                <h3>Technical electives by category</h3>
+              <h3>Technical electives by category</h3>
+              <div id="tech-category-options" class="tech-category-options" role="listbox" aria-label="Elective categories"></div>
+              <div class="tech-electives-buttons">
+                <button type="button" id="add-technicals-btn" class="btn-replan">Add Technicals</button>
+                <button type="button" id="add-advanced-btn" class="btn-replan">Add Advanced</button>
               </div>
-              <div class="tech-electives-body">
-                <label for="tech-category-select">Select categories (Ctrl+Click for multiple)</label>
-                <select id="tech-category-select" multiple size="7" aria-label="Select one or more elective categories"></select>
-                <button type="button" id="add-technicals-btn" class="btn-replan">Add technicals</button>
-                <button type="button" id="add-advanced-btn" class="btn-replan">Add advanced</button>
-                <div id="tech-electives-list" class="tech-electives-list"></div>
-              </div>
+              <div id="tech-electives-list" class="tech-electives-list"></div>
             </div>
           </div>
         </div>

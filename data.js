@@ -56,8 +56,8 @@ const FOCUS_AREAS = {
 
 // Sample sequence from catalog (reference only)
 const SAMPLE_SEQUENCE = [
-  { year: 1, semester: 'Fall', courses: ['CS 100 (optional)', 'CS 124', 'MATH 221', 'ENG 100', 'Science elective', 'Composition I or Gen Ed'] },
-  { year: 1, semester: 'Spring', courses: ['CS 128', 'CS 173', 'MATH 231', 'Gen Ed (Non-Western Studies)', 'Gen Ed or Composition I'] },
+  { year: 1, semester: 'Fall', courses: ['CS 100 (optional)', 'CS 124', 'MATH 221', 'ENG 100', 'Science elective', 'Gen Ed'] },
+  { year: 1, semester: 'Spring', courses: ['CS 128', 'CS 173', 'MATH 231', 'Gen Ed (Non-Western Studies)', 'Gen Ed (Composition I)'] },
   { year: 2, semester: 'Fall', courses: ['CS 222', 'CS 225', 'MATH 241', 'PHYS 211', 'Gen Ed (Natrual Science Studies)'] },
   { year: 2, semester: 'Spring', courses: ['CS 233', 'CS 361', 'MATH 257', 'PHYS 212', 'Free elective'] },
   { year: 3, semester: 'Fall', courses: ['CS 210', 'CS 341', 'CS 357', 'CS Technical elective', 'Language (3rd level)'] },

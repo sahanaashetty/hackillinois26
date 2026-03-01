@@ -125,13 +125,26 @@ async function loadTechElectives() {
   }
 }
 
+function getSelectedTechCategories() {
+  const options = document.querySelectorAll('.tech-category-option.selected');
+  return Array.from(options).map(el => el.dataset.category || el.textContent.trim()).filter(Boolean);
+}
+
 function initTechElectivesUI() {
-  const sel = document.getElementById('tech-category-select');
+  const optionsContainer = document.getElementById('tech-category-options');
   const listEl = document.getElementById('tech-electives-list');
-  if (!sel || !listEl) return;
+  if (!optionsContainer || !listEl) return;
   const categories = Array.isArray(TECH_ELECTIVE_CATEGORIES) ? TECH_ELECTIVE_CATEGORIES : [];
-  sel.innerHTML = categories.map(cat => `<option value="${escapeHtml(cat)}">${escapeHtml(cat)}</option>`).join('');
-  sel.addEventListener('change', renderTechElectivesList);
+  optionsContainer.innerHTML = categories.map(cat =>
+    `<button type="button" class="tech-category-option" data-category="${escapeAttr(cat)}" role="option" aria-selected="false">${escapeHtml(cat)}</button>`
+  ).join('');
+  optionsContainer.addEventListener('click', (e) => {
+    const opt = e.target.closest('.tech-category-option');
+    if (!opt) return;
+    opt.classList.toggle('selected');
+    opt.setAttribute('aria-selected', opt.classList.contains('selected'));
+    renderTechElectivesList();
+  });
   renderTechElectivesList();
 
   const addTechnicalsBtn = document.getElementById('add-technicals-btn');
@@ -145,9 +158,7 @@ function initTechElectivesUI() {
 }
 
 function fillTechnicalElectivesFromCategories() {
-  const sel = document.getElementById('tech-category-select');
-  if (!sel) return;
-  const selectedCategories = Array.from(sel.selectedOptions || []).map(opt => opt.value);
+  const selectedCategories = getSelectedTechCategories();
   if (selectedCategories.length === 0) {
     showAlertModal('Select at least one category above, then click Add technicals.');
     return;
@@ -208,9 +219,7 @@ function fillTechnicalElectivesFromCategories() {
 }
 
 function fillAdvancedElectivesFromCategories() {
-  const sel = document.getElementById('tech-category-select');
-  if (!sel) return;
-  const selectedCategories = Array.from(sel.selectedOptions || []).map(opt => opt.value);
+  const selectedCategories = getSelectedTechCategories();
   if (selectedCategories.length === 0) {
     showAlertModal('Select at least one category above, then click Add advanced.');
     return;
@@ -270,12 +279,11 @@ function fillAdvancedElectivesFromCategories() {
 }
 
 function renderTechElectivesList() {
-  const sel = document.getElementById('tech-category-select');
   const listEl = document.getElementById('tech-electives-list');
-  if (!sel || !listEl) return;
-  const selected = Array.from(sel.selectedOptions || []).map(opt => opt.value);
+  if (!listEl) return;
+  const selected = getSelectedTechCategories();
   if (selected.length === 0) {
-    listEl.innerHTML = '<p class="tech-electives-empty">Select one or more categories above (Ctrl+Click for multiple).</p>';
+    listEl.innerHTML = '';
     return;
   }
   const nameLookup = typeof CS_ELECTIVE_NAMES !== 'undefined' ? CS_ELECTIVE_NAMES : {};
@@ -1088,7 +1096,7 @@ function updateProgress() {
   const pieEl = document.getElementById('progress-pie');
   const pctEl = document.getElementById('progress-pie-pct');
   if (pieEl) pieEl.style.setProperty('--pct', pct + '%');
-  if (pctEl) pctEl.textContent = pct + '%';
+  if (pctEl) pctEl.textContent = pct;
   const tcEl = document.getElementById('tech-elective-count');
   const thEl = document.getElementById('tech-elective-hrs');
   const advEl = document.getElementById('adv-elective-count');
