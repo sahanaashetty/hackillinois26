@@ -213,13 +213,14 @@ const MAX_HOURS_PER_SEMESTER = 18;
 const MIN_SEMESTERS = 8;
 
 /**
- * Replan schedule: enforce prerequisite order across semesters, then pack courses
- * so each semester is at most MAX_HOURS_PER_SEMESTER. Adds more semesters if needed.
+ * Replan schedule: only move (1) inserted missing prereqs and (2) their postrequisites.
+ * Put inserted prereqs in the next semester (e.g. Spring Y1); place postrequisites after them.
+ * All other courses stay exactly where they are.
  */
 function replanSchedule() {
   const postreqMap = buildPostreqMap();
 
-  // Flatten plan to (code, hours, currentSem)
+  // Flatten plan: list of { code, hours, currentSem }
   const all = [];
   for (let s = 0; s < plan.length; s++) {
     (plan[s] || []).forEach(c => {
@@ -227,24 +228,91 @@ function replanSchedule() {
     });
   }
 
-  const codeToSem = {};
-  all.forEach(({ code, currentSem }) => { codeToSem[code] = currentSem; });
+  const codesInPlan = new Set(all.map(x => x.code));
 
-  // Earliest semester for each course: must be after all prereq groups (AND of ORs)
-  function earliestSem(code) {
+  // 1) Find missing prerequisites (insert these in "next semester")
+  const missing = new Set();
+  for (const { code } of all) {
+    const groups = PREREQ_MAP[code];
+    if (!groups) continue;
+    for (const grp of groups) {
+      if (grp.some(p => codesInPlan.has(p))) continue;
+      if (grp.length > 0) missing.add(grp[0]);
+    }
+  }
+  let changed;
+  do {
+    changed = false;
+    for (const code of missing) {
+      const groups = PREREQ_MAP[code];
+      if (!groups) continue;
+      for (const grp of groups) {
+        const hasFromGroup = grp.some(p => codesInPlan.has(p) || missing.has(p));
+        if (!hasFromGroup && grp.length > 0 && !missing.has(grp[0])) {
+          missing.add(grp[0]);
+          changed = true;
+        }
+      }
+    }
+  } while (changed);
+
+  // 2) Inserted = missing prereqs not already in plan. Affected = inserted + transitive postrequisites (in plan)
+  const inserted = new Set();
+  for (const code of missing) {
+    if (all.some(x => x.code === code)) continue;
+    inserted.add(code);
+  }
+  const affected = new Set(inserted);
+  do {
+    changed = false;
+    for (const code of [...affected]) {
+      for (const d of postreqMap[code] || []) {
+        if (!codesInPlan.has(d) || affected.has(d)) continue;
+        affected.add(d);
+        changed = true;
+      }
+    }
+  } while (changed);
+  for (const code of inserted) {
+    all.push({ code, hours: getHours(code), currentSem: -1 });
+  }
+
+  const fixed = all.filter(x => !affected.has(x.code));
+  const affectedList = all.filter(x => affected.has(x.code));
+
+  if (affectedList.length === 0) return;
+
+  const codeToSem = {};
+  fixed.forEach(({ code, currentSem }) => { codeToSem[code] = currentSem; });
+
+  const fixedHours = {};
+  fixed.forEach(({ code, hours, currentSem }) => {
+    const h = hours ?? getHours(code);
+    fixedHours[currentSem] = (fixedHours[currentSem] || 0) + h;
+  });
+
+  const numSems = Math.max(plan.length, MIN_SEMESTERS);
+  for (let i = 0; i < numSems; i++) if (fixedHours[i] === undefined) fixedHours[i] = 0;
+
+  function semForPrereq(p) {
+    return codeToSem[p];
+  }
+
+  function earliestSem(code, assignmentSoFar) {
+    if (inserted.has(code)) return 1;
     const groups = PREREQ_MAP[code];
     if (!groups || groups.length === 0) return 0;
     let e = 0;
     for (const grp of groups) {
-      const inPlan = grp.filter(p => codeToSem.hasOwnProperty(p));
-      if (inPlan.length === 0) continue; // no prereq from this group in plan
-      const minSem = Math.min(...inPlan.map(p => codeToSem[p]));
-      e = Math.max(e, minSem + 1);
+      const sems = grp
+        .filter(p => codeToSem.hasOwnProperty(p) || assignmentSoFar.hasOwnProperty(p))
+        .map(p => assignmentSoFar.hasOwnProperty(p) ? assignmentSoFar[p] : semForPrereq(p));
+      if (sems.length === 0) continue;
+      e = Math.max(e, Math.min(...sems) + 1);
     }
     return e;
   }
 
-  // Topological order: prereqs before dependents (edges: prereq -> course)
   const order = [];
   const visited = new Set();
   function visit(code) {
@@ -254,39 +322,45 @@ function replanSchedule() {
     if (groups) {
       for (const grp of groups) {
         for (const p of grp) {
-          if (codeToSem.hasOwnProperty(p)) visit(p);
+          if (affected.has(p)) visit(p);
         }
       }
     }
     order.push(code);
   }
-  all.forEach(({ code }) => visit(code));
+  affectedList.forEach(({ code }) => visit(code));
 
-  // Assign each course to earliest feasible semester (>= earliestSem, under hour cap)
-  const semHours = {};
-  const assignment = {};
-  for (const code of order) {
-    const hours = (all.find(x => x.code === code) || {}).hours ?? getHours(code);
-    const earliest = earliestSem(code);
-    let s = earliest;
-    while ((semHours[s] || 0) + hours > MAX_HOURS_PER_SEMESTER) s++;
-    assignment[code] = s;
-    semHours[s] = (semHours[s] || 0) + hours;
-  }
-
-  const numSems = Math.max(MIN_SEMESTERS, ...Object.values(assignment)) + 1;
-  if (numSems > plan.length) {
-    for (let i = plan.length; i < numSems; i++) plan.push([]);
-  }
-
-  const newPlan = Array.from({ length: numSems }, () => []);
-  all.forEach(({ code, hours }) => {
-    const s = assignment[code];
-    newPlan[s].push({ code, hours });
+  const hoursPerCode = {};
+  affectedList.forEach(({ code, hours }) => {
+    const h = hours ?? getHours(code);
+    hoursPerCode[code] = (hoursPerCode[code] || 0) + h;
   });
 
-  for (let i = 0; i < newPlan.length; i++) plan[i] = newPlan[i];
-  if (plan.length > numSems) plan.length = numSems;
+  const assignment = {};
+  const affectedHoursInSem = {};
+
+  for (const code of order) {
+    const totalHours = hoursPerCode[code] || getHours(code);
+    const earliest = earliestSem(code, assignment);
+    let s = earliest;
+    while ((fixedHours[s] || 0) + (affectedHoursInSem[s] || 0) + totalHours > MAX_HOURS_PER_SEMESTER) s++;
+    assignment[code] = s;
+    affectedHoursInSem[s] = (affectedHoursInSem[s] || 0) + totalHours;
+  }
+
+  const newPlan = [];
+  for (let i = 0; i < numSems; i++) {
+    newPlan[i] = (fixed.filter(x => x.currentSem === i).map(({ code, hours }) => ({ code, hours: hours ?? getHours(code) }))).slice();
+  }
+  const maxAssigned = Math.max(0, ...Object.values(assignment));
+  while (newPlan.length <= maxAssigned) newPlan.push([]);
+  affectedList.forEach(({ code, hours }) => {
+    const s = assignment[code];
+    newPlan[s].push({ code, hours: hours ?? getHours(code) });
+  });
+
+  plan.length = 0;
+  for (let i = 0; i < newPlan.length; i++) plan.push(newPlan[i]);
 }
 
 function loadPlan() {
@@ -300,13 +374,14 @@ function loadPlan() {
       }
     }
     const settingsRaw = localStorage.getItem(SETTINGS_KEY);
+    const maxSem = (Array.isArray(plan) && plan.length) ? plan.length - 1 : 7;
     if (settingsRaw) {
       const s = JSON.parse(settingsRaw);
-      if (typeof s.currentSemesterIndex === 'number' && s.currentSemesterIndex >= 0 && s.currentSemesterIndex <= 7) {
+      if (typeof s.currentSemesterIndex === 'number' && s.currentSemesterIndex >= 0 && s.currentSemesterIndex <= maxSem) {
         currentSemesterIndex = s.currentSemesterIndex;
       }
       if (Array.isArray(s.unlockedPastSemesters)) {
-        unlockedPastSemesters = s.unlockedPastSemesters.filter(i => typeof i === 'number' && i >= 0 && i < 8);
+        unlockedPastSemesters = s.unlockedPastSemesters.filter(i => typeof i === 'number' && i >= 0 && i <= maxSem);
       }
     }
   } catch (_) {}
@@ -474,6 +549,7 @@ function renderSemesters() {
       }
       saveSettings();
       renderSemesters();
+      updateProgress();
     });
   });
 
@@ -488,6 +564,7 @@ function renderSemesters() {
         currentSemesterIndex = i;
         saveSettings();
         renderSemesters();
+        updateProgress();
       }
     });
   });
@@ -604,8 +681,16 @@ function showConfirmModal(message) {
 }
 
 function updateProgress() {
-  const lastCountedIndex = currentSemesterIndex !== null ? currentSemesterIndex : 7;
-  const coursesForProgress = plan.slice(0, lastCountedIndex + 1).flat();
+  // Hour count = semesters 0 through current (completed + current). Uses currentSemesterIndex when set.
+  const maxPlanIdx = Math.max((plan && plan.length) ? plan.length - 1 : 7, 0);
+  const lastIdx = typeof currentSemesterIndex === 'number' && currentSemesterIndex >= 0
+    ? Math.min(currentSemesterIndex, maxPlanIdx)
+    : maxPlanIdx;
+  const coursesForProgress = [];
+  for (let i = 0; i <= lastIdx && i < (plan && plan.length); i++) {
+    const sem = plan[i];
+    if (Array.isArray(sem)) coursesForProgress.push(...sem);
+  }
   const allCourses = coursesForProgress.map(c => c.code);
   const totalHours = coursesForProgress.reduce((sum, c) => sum + (c.hours ?? getHours(c.code)), 0);
   const coreDone = allCourses.filter(isCoreCS).length;
@@ -700,6 +785,7 @@ function bindButtons() {
   if (replanBtn) {
     replanBtn.addEventListener('click', () => {
       replanSchedule();
+      populateDropdowns();
       renderSemesters();
       updateProgress();
       savePlan();
