@@ -330,18 +330,48 @@ function bindButtons() {
 }
 
 function renderRequirements() {
-  document.getElementById('req-core').innerHTML = CORE_CS.map(c => `<li><strong>${c.code}</strong> ${c.name} (${c.hours}h)</li>`).join('');
-  document.getElementById('req-math').innerHTML = MATH_SCIENCE.map(c => `<li><strong>${c.code}</strong> ${c.name} (${c.hours}h)</li>`).join('');
-  document.getElementById('req-orient').innerHTML = ORIENTATION.map(c => `<li><strong>${c.code}</strong> ${c.name} (${c.hours}h)</li>`).join('');
+  const coreEl = document.getElementById('req-core');
+  const mathEl = document.getElementById('req-math');
+  const orientEl = document.getElementById('req-orient');
+  const teamEl = document.getElementById('req-team');
+  if (coreEl) coreEl.innerHTML = CORE_CS.map(c => `<li><strong>${c.code}</strong> ${c.name} (${c.hours}h)</li>`).join('');
+  if (mathEl) mathEl.innerHTML = MATH_SCIENCE.map(c => `<li><strong>${c.code}</strong> ${c.name} (${c.hours}h)</li>`).join('');
+  if (orientEl) orientEl.innerHTML = ORIENTATION.map(c => `<li><strong>${c.code}</strong> ${c.name} (${c.hours}h)</li>`).join('');
+  if (teamEl) teamEl.innerHTML = TEAM_PROJECT_COURSES.map(code => {
+    const name = (typeof CS_ELECTIVE_NAMES !== 'undefined' && CS_ELECTIVE_NAMES[code]) || code;
+    return `<li><strong>${code}</strong> ${name}</li>`;
+  }).join('');
 }
 
 function renderSampleSequence() {
-  document.getElementById('sample-sequence').innerHTML = SAMPLE_SEQUENCE.map(s =>
-    `<div class="sample-semester">
-      <div class="title">Year ${s.year} ${s.semester}</div>
-      <div class="courses">${s.courses.map(c => `<span>${c}</span>`).join('')}</div>
-    </div>`
-  ).join('');
+  const el = document.getElementById('sample-sequence');
+  if (!el) return;
+  // Catalog layout: Fall left, Spring right; courses vertical. Group by year.
+  const years = [1, 2, 3, 4];
+  const fallHours = [16, 16, 16, 16];
+  const springHours = [15, 17, 16, 16];
+  el.innerHTML = years.map((year, yi) => {
+    const fall = SAMPLE_SEQUENCE.find(s => s.year === year && s.semester === 'Fall');
+    const spring = SAMPLE_SEQUENCE.find(s => s.year === year && s.semester === 'Spring');
+    const fallCourses = (fall && fall.courses) ? fall.courses.map(c => `<div class="sample-course">${c}</div>`).join('') : '';
+    const springCourses = (spring && spring.courses) ? spring.courses.map(c => `<div class="sample-course">${c}</div>`).join('') : '';
+    return `
+      <div class="sample-year">
+        <h4 class="sample-year-title">Year ${year}</h4>
+        <div class="sample-columns">
+          <div class="sample-col sample-fall">
+            <div class="sample-col-label">First Semester (Fall)</div>
+            <div class="sample-courses-vertical">${fallCourses}</div>
+            <div class="sample-hours">${fallHours[yi] || 0} hrs</div>
+          </div>
+          <div class="sample-col sample-spring">
+            <div class="sample-col-label">Second Semester (Spring)</div>
+            <div class="sample-courses-vertical">${springCourses}</div>
+            <div class="sample-hours">${springHours[yi] || 0} hrs</div>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
 }
 
 async function init() {

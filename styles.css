@@ -299,6 +299,21 @@ body {
 }
 
 /* Requirements panel */
+.req-intro {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin-bottom: 1.25rem;
+}
+
+.req-intro a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.req-intro a:hover {
+  text-decoration: underline;
+}
+
 .req-section {
   margin-bottom: 1.5rem;
 }
@@ -307,6 +322,40 @@ body {
   margin: 0 0 0.5rem 0;
   font-size: 1rem;
   font-weight: 600;
+}
+
+.req-section h4 {
+  margin: 1rem 0 0.35rem 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.req-list {
+  margin: 0;
+  padding-left: 1.25rem;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.req-list li {
+  margin-bottom: 0.25rem;
+}
+
+.req-desc {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.req-desc a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.req-desc a:hover {
+  text-decoration: underline;
 }
 
 .req-section p {
@@ -330,13 +379,85 @@ body {
 .sample-note {
   font-size: 0.9rem;
   color: var(--text-muted);
+  margin-bottom: 0.75rem;
+}
+
+.sample-note a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.sample-note a:hover {
+  text-decoration: underline;
+}
+
+.use-sample-btn {
   margin-bottom: 1rem;
 }
 
 .sample-sequence {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 1.25rem;
+}
+
+.sample-year {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.sample-year-title {
+  margin: 0;
+  padding: 0.6rem 1rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+}
+
+.sample-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  min-height: 120px;
+}
+
+.sample-col {
+  padding: 1rem;
+  border-right: 1px solid var(--border);
+}
+
+.sample-col:last-child {
+  border-right: none;
+}
+
+.sample-col-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 0.5rem;
+}
+
+.sample-courses-vertical {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.sample-course {
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.sample-hours {
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
 }
 
 .sample-semester {
@@ -383,5 +504,18 @@ body {
 @media (max-width: 768px) {
   .year-row {
     grid-template-columns: 1fr;
+  }
+
+  .sample-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .sample-col {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sample-col:last-child {
+    border-bottom: none;
   }
 }

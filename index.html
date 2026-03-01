@@ -13,7 +13,7 @@
   <div class="app">
     <header class="header">
       <h1>UIUC CS Class Planner</h1>
-      <p class="subtitle">Plan your Computer Science BS — 128 hours · <a href="https://catalog.illinois.edu/undergraduate/engineering/computer-science-bs/#samplesequencetext" target="_blank" rel="noopener">Catalog</a></p>
+      <p class="subtitle">Plan your Computer Science BS — 128 hours · <a href="https://catalog.illinois.edu/undergraduate/engineering/computer-science-bs/#degreerequirementstext" target="_blank" rel="noopener">Degree Requirements</a> · <a href="https://catalog.illinois.edu/undergraduate/engineering/computer-science-bs/#samplesequencetext" target="_blank" rel="noopener">Sample Sequence</a></p>
     </header>
 
     <nav class="tabs">
@@ -50,44 +50,57 @@
             <button id="clear-btn" class="btn-secondary">Clear Plan</button>
           </div>
         </div>
+      </section>
 
-      <!-- Requirements -->
+      <!-- Degree Requirements (from catalog) -->
       <section id="requirements" class="panel">
+        <p class="req-intro">From the <a href="https://catalog.illinois.edu/undergraduate/engineering/computer-science-bs/#degreerequirementstext" target="_blank" rel="noopener">2025–2026 catalog</a>. Always confirm with your advisor.</p>
         <div class="req-section">
-          <h3>Core CS (35 hrs)</h3>
-          <ul class="course-list" id="req-core"></ul>
+          <h3>Graduation Requirements</h3>
+          <ul class="req-list">
+            <li>Minimum <strong>128 hours</strong> for graduation</li>
+            <li>Minimum <strong>Technical GPA 2.0</strong> (CS and Math courses)</li>
+            <li>Minimum <strong>40 hours</strong> upper-division (300–400 level)</li>
+          </ul>
         </div>
         <div class="req-section">
-          <h3>Math & Science (25 hrs)</h3>
-          <ul class="course-list" id="req-math"></ul>
+          <h3>General Education</h3>
+          <p class="req-desc">Composition I (4–6h), Advanced Composition (3h), Humanities &amp; Arts (6h), Natural Sciences &amp; Technology (6h), Social &amp; Behavioral Sciences (6h), Cultural Studies (3 courses, 3h each), Quantitative Reasoning (6–10h), Language (3rd level). Some fulfilled by required courses.</p>
         </div>
         <div class="req-section">
-          <h3>Orientation (3–4 hrs)</h3>
+          <h3>Orientation &amp; Professional Development (3–4 hrs)</h3>
           <ul class="course-list" id="req-orient"></ul>
         </div>
         <div class="req-section">
-          <h3>Technical Electives</h3>
-          <p>Min 6 courses, 18+ hrs. One must be a team project course. Three must be from one focus area.</p>
+          <h3>Foundational Mathematics &amp; Science (25 hrs)</h3>
+          <ul class="course-list" id="req-math"></ul>
         </div>
         <div class="req-section">
-          <h3>Advanced Electives</h3>
-          <p>Min 2 courses, 6+ hrs (400-level, any department).</p>
+          <h3>Computer Science Technical Core (35 hrs)</h3>
+          <ul class="course-list" id="req-core"></ul>
+        </div>
+        <div class="req-section">
+          <h3>Technical Electives (min 18 hrs)</h3>
+          <p class="req-desc">Minimum <strong>6 courses</strong>, 18+ hours, from CS 397 and CS 400-level (excluding CS 400, 401, 402, 403, 491). At least <strong>one</strong> must be a team project course. At least <strong>three</strong> from a single focus area. CS 498/598 Special Topics may count with approval.</p>
+          <h4>Team project courses</h4>
+          <ul class="course-list" id="req-team"></ul>
+          <h4>Focus areas</h4>
+          <p class="req-desc">Software Foundations; Algorithms and Models; Intelligence and Big Data; Human and Social Impact; Media; Scientific &amp; HPC; Distributed Systems &amp; Security; Machines. See <a href="https://catalog.illinois.edu/undergraduate/engineering/computer-science-bs/#degreerequirementstext" target="_blank" rel="noopener">catalog</a> for full course lists per area.</p>
+        </div>
+        <div class="req-section">
+          <h3>Advanced Electives (min 6 hrs)</h3>
+          <p class="req-desc">Minimum <strong>2 courses</strong>, 6+ hours, distinct from technical electives. 400-level letter-grade coursework in any department; CS 397 may apply with limits.</p>
         </div>
         <div class="req-section">
           <h3>Free Electives</h3>
-          <p>Enough to reach 128 total hours.</p>
+          <p class="req-desc">Additional coursework to reach 128 total hours, subject to <a href="https://go.grainger.illinois.edu/FreeElectives" target="_blank" rel="noopener">Grainger restrictions</a>.</p>
         </div>
       </section>
-      
-      <button class="btn-secondary" id="use-sample-btn">
-        Use Sample as My Plan
-      </button>
-      
-      <div id="sample-sequence" class="sample-sequence"></div>
 
-      <!-- Sample Sequence -->
+      <!-- Sample Sequence (from catalog) -->
       <section id="sample" class="panel">
-        <p class="sample-note">Reference only. Work with your advisor for your actual plan.</p>
+        <p class="sample-note">From the <a href="https://catalog.illinois.edu/undergraduate/engineering/computer-science-bs/#samplesequencetext" target="_blank" rel="noopener">catalog sample sequence</a>. Reference only — work with your advisor for your actual plan.</p>
+        <button type="button" class="btn-secondary use-sample-btn" id="use-sample-btn">Use sample as my plan</button>
         <div class="sample-sequence" id="sample-sequence"></div>
       </section>
     </main>
