@@ -74,6 +74,27 @@ async function loadPrerequisites() {
   }
 }
 
+async function loadCourseCatalog() {
+  try {
+    const res = await fetch('course-catalog.csv');
+    if (!res.ok) return;
+    const text = await res.text();
+    const lines = text.split(/\r?\n/).filter(Boolean);
+    for (let i = 0; i < lines.length; i++) {
+      const cols = parseCSVLine(lines[i]);
+      if (i === 0 && (cols[3] || '').toLowerCase() === 'subject') continue;
+      const subject = (cols[3] || '').trim();
+      const number = (cols[4] || '').trim();
+      const name = (cols[5] || '').trim().replace(/&amp;/g, '&');
+      if (!subject || !number || !name) continue;
+      const code = `${subject.toUpperCase()} ${number}`;
+      if (!COURSE_CATALOG_NAMES[code]) COURSE_CATALOG_NAMES[code] = name;
+    }
+  } catch (err) {
+    console.error('Failed to load course catalog', err);
+  }
+}
+
 function parseCSVLine(line) {
   const out = [];
   let cur = '';
@@ -93,6 +114,8 @@ let MATH_SCIENCE_CODES = new Set();
 let ORIENT_CODES = new Set(['ENG 100', 'CS 210', 'CS 211']);
 let ALL_COURSES = [];
 let COURSE_BY_CODE = {};
+// Course name lookup from course-catalog.csv (Subject + Number -> Name)
+let COURSE_CATALOG_NAMES = {};
 
 function rebuildCourseData() {
   if (!currentMajor) return;
@@ -123,6 +146,7 @@ function rebuildCourseData() {
 function getHours(courseCode) {
   const c = COURSE_BY_CODE[courseCode];
   if (c) return c.hours;
+  if (typeof courseCode === 'string' && courseCode.startsWith('Gen Ed')) return 3;
   if (courseCode.startsWith('CS 4') || courseCode.startsWith('CS 5')) return 3;
   return 3;
 }
@@ -146,13 +170,21 @@ function isTeamProject(code) {
 
 function getCourseUrl(code) {
   if (!code || typeof code !== 'string') return null;
-  const trimmed = code.trim();
+  const trimmed = ensureCourseCode(code);
   if (!trimmed) return null;
-  const match = trimmed.match(/^([A-Za-z]+)\s*(\d{3,})$/) || trimmed.match(/^([A-Za-z]+)(\d{3,})$/);
+  const match = trimmed.match(/^([A-Za-z]+)\s*(\d+)$/);
   if (!match) return null;
-  const dept = match[1].toUpperCase();
+  const subjectLower = match[1].toLowerCase();
   const num = match[2];
-  return `https://courses.illinois.edu/search/?P=${encodeURIComponent(dept + ' ' + num)}`;
+  return `https://catalog.illinois.edu/courses-of-instruction/${subjectLower}/#${subjectLower}${num}`;
+}
+
+function getCourseDisplayName(code) {
+  const c = ensureCourseCode(code);
+  const raw = COURSE_CATALOG_NAMES[c] || (COURSE_BY_CODE[c] && COURSE_BY_CODE[c].name) || '';
+  if (!raw) return '';
+  // Strip parenthetical substitution notes for display (e.g. " (MATH 220 may substitute)")
+  return raw.replace(/\s*\([^)]*may substitute[^)]*\)\s*$/i, '').trim();
 }
 
 function escapeAttr(s) {
@@ -236,7 +268,44 @@ function buildPostreqMap() {
 }
 
 const MAX_HOURS_PER_SEMESTER = 18;
+const MIN_HOURS_PER_SEMESTER = 12;
 const MIN_SEMESTERS = 8;
+
+const FILLER_COURSE = { code: 'Free elective', hours: 3 };
+
+/** Ensure each semester has at least MIN_HOURS_PER_SEMESTER and total plan hours >= major total. */
+function ensurePlanMeetsMinAndTotalHours(planArray) {
+  if (!currentMajor || !Array.isArray(planArray)) return;
+  const targetTotal = typeof currentMajor.totalHours === 'number' ? currentMajor.totalHours : 128;
+  const numSems = Math.max(planArray.length, MIN_SEMESTERS);
+  while (planArray.length < numSems) planArray.push([]);
+
+  function semHours(semIndex) {
+    return (planArray[semIndex] || []).reduce((sum, c) => sum + (c.hours ?? getHours(c.code)), 0);
+  }
+  function totalHours() {
+    let t = 0;
+    for (let i = 0; i < planArray.length; i++) t += semHours(i);
+    return t;
+  }
+
+  for (let s = 0; s < numSems; s++) {
+    while (semHours(s) < MIN_HOURS_PER_SEMESTER) {
+      planArray[s].push({ ...FILLER_COURSE });
+    }
+  }
+  while (totalHours() < targetTotal) {
+    let added = false;
+    for (let s = 0; s < numSems && totalHours() < targetTotal; s++) {
+      if (semHours(s) < MAX_HOURS_PER_SEMESTER) {
+        planArray[s].push({ ...FILLER_COURSE });
+        added = true;
+        break;
+      }
+    }
+    if (!added) break;
+  }
+}
 
 /**
  * Replan schedule: only move (1) inserted missing prereqs and (2) their postrequisites.
@@ -311,7 +380,10 @@ function replanSchedule() {
   const fixed = all.filter(x => !affected.has(x.code));
   const affectedList = all.filter(x => affected.has(x.code));
 
-  if (affectedList.length === 0) return;
+  if (affectedList.length === 0) {
+    ensurePlanMeetsMinAndTotalHours(plan);
+    return;
+  }
 
   const codeToSem = {};
   fixed.forEach(({ code, currentSem }) => { codeToSem[code] = currentSem; });
@@ -397,6 +469,7 @@ function replanSchedule() {
 
   plan.length = 0;
   for (let i = 0; i < newPlan.length; i++) plan.push(newPlan[i]);
+  ensurePlanMeetsMinAndTotalHours(plan);
   lastDeleted = null;
 }
 
@@ -505,6 +578,10 @@ function renderSemesters() {
 
     const chips = (courses || []).map((c, j) => {
       const code = c.code;
+      const noNameCodes = ['Free elective', 'Science elective', 'Composition I', 'Language'];
+      const skipName = noNameCodes.includes(code) || (typeof code === 'string' && code.startsWith('Gen Ed'));
+      const name = skipName ? '' : getCourseDisplayName(code);
+      const label = name ? `${code} - ${name}` : code;
       const hrs = c.hours ?? getHours(code);
       const tooltipText = getPrereqTooltip(code, i);
       const removeBtn = locked
@@ -512,11 +589,12 @@ function renderSemesters() {
         : `<button type="button" class="remove" aria-label="Remove">×</button>`;
       const courseUrl = getCourseUrl(code);
       const codeDisplay = courseUrl
-        ? `<a href="${courseUrl}" class="course-chip-link" target="_blank" rel="noopener">${code}</a>`
-        : `<span>${code}</span>`;
+        ? `<a href="${courseUrl}" class="course-chip-link" target="_blank" rel="noopener">${escapeAttr(label)}</a>`
+        : `<span>${escapeAttr(label)}</span>`;
+      const draggableAttr = locked ? '' : ' draggable="true"';
 
       return `
-        <div class="course-chip" data-sem="${i}" data-idx="${j}" data-prereq-tooltip="${escapeAttr(tooltipText)}">
+        <div class="course-chip" data-sem="${i}" data-idx="${j}" data-prereq-tooltip="${escapeAttr(tooltipText)}"${draggableAttr}>
           <span class="course-chip-code">${codeDisplay}</span>
           <div class="right">
             <span class="hours">${hrs}h</span>
@@ -539,7 +617,7 @@ function renderSemesters() {
           </div>
           <span class="semester-hours">${hours} hrs</span>
         </div>
-        <div class="semester-courses">
+        <div class="semester-courses" data-semester="${i}">
           ${chips || '<span class="text-muted">No courses</span>'}
         </div>
       </div>
@@ -574,6 +652,60 @@ function renderSemesters() {
       const removed = (plan[sem] || [])[idx];
       if (removed) lastDeleted = { code: removed.code, fromSem: sem };
       plan[sem].splice(idx, 1);
+      renderSemesters();
+      updateProgress();
+      savePlan();
+    });
+  });
+
+  // Drag and drop: move course from one semester to another
+  container.querySelectorAll('.course-chip[draggable="true"]').forEach(chip => {
+    chip.addEventListener('dragstart', (e) => {
+      const sem = Number(chip.dataset.sem);
+      const idx = Number(chip.dataset.idx);
+      if (isSemesterLocked(sem)) return;
+      e.dataTransfer.setData('application/json', JSON.stringify({ sem, idx }));
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', chip.textContent.trim());
+      chip.classList.add('dragging');
+    });
+    chip.addEventListener('dragend', () => chip.classList.remove('dragging'));
+  });
+
+  container.querySelectorAll('.semester-courses').forEach(zone => {
+    const targetSem = Number(zone.dataset.semester);
+    zone.addEventListener('dragenter', (e) => {
+      e.preventDefault();
+      if (e.dataTransfer.types.includes('application/json')) zone.classList.add('drag-over');
+    });
+    zone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+    });
+    zone.addEventListener('dragleave', (e) => {
+      if (!zone.contains(e.relatedTarget)) zone.classList.remove('drag-over');
+    });
+    zone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      zone.classList.remove('drag-over');
+      const raw = e.dataTransfer.getData('application/json');
+      if (!raw) return;
+      let payload;
+      try {
+        payload = JSON.parse(raw);
+      } catch (_) {
+        return;
+      }
+      const srcSem = payload.sem;
+      const srcIdx = payload.idx;
+      if (typeof srcSem !== 'number' || typeof srcIdx !== 'number' || isSemesterLocked(srcSem) || isSemesterLocked(targetSem)) return;
+      if (srcSem === targetSem) return;
+      const course = (plan[srcSem] || [])[srcIdx];
+      if (!course) return;
+      while (plan.length <= targetSem) plan.push([]);
+      if (!Array.isArray(plan[targetSem])) plan[targetSem] = [];
+      plan[srcSem].splice(srcIdx, 1);
+      plan[targetSem].push(course);
       renderSemesters();
       updateProgress();
       savePlan();
@@ -831,7 +963,7 @@ function bindButtons() {
       renderSemesters();
       updateProgress();
       savePlan();
-      showAlertModal('Schedule replanned. Prerequisite order is enforced and courses are packed into semesters (max ' + MAX_HOURS_PER_SEMESTER + ' hrs/semester). Extra semesters added if needed.');
+      showAlertModal('Schedule replanned. Prerequisite order enforced; each semester has at least ' + MIN_HOURS_PER_SEMESTER + ' hrs (max ' + MAX_HOURS_PER_SEMESTER + '). Total hours meet degree requirement. Free electives added as needed.');
     });
   }
 
@@ -969,6 +1101,7 @@ async function init() {
     rebuildCourseData();
   }
   await loadPrerequisites();
+  await loadCourseCatalog();
   populateMajorSelect();
   updateMajorUI();
   loadPlan();
@@ -995,7 +1128,8 @@ function loadSampleIntoPlan() {
       const match = label.match(/[A-Z]+ \d{3}|Science elective|Free elective|Gen Ed|Composition I|Language/);
       if (!match) return;
 
-      const code = ensureCourseCode(match[0]);
+      let code = ensureCourseCode(match[0]);
+      if (match[0] === 'Gen Ed') code = label;
       plan[semIdx].push({ code, hours: getHours(code) });
     });
   });
