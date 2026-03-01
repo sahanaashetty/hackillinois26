@@ -49,6 +49,10 @@ body {
   flex-shrink: 0;
 }
 
+.header-actions #replan-schedule-btn {
+  margin-top: 0.25rem;
+}
+
 .major-select-row {
   display: flex;
   align-items: center;
@@ -284,7 +288,7 @@ body {
   padding: 0.2rem;
   border: none;
   background: transparent;
-  color: var(--text-muted);
+  color: #fff;
   cursor: pointer;
   font-size: 1rem;
   line-height: 1;
@@ -292,7 +296,7 @@ body {
 }
 
 .lock-btn:hover {
-  color: var(--text);
+  color: rgba(255, 255, 255, 0.9);
   background: var(--border);
 }
 
@@ -695,11 +699,50 @@ body {
   margin-bottom: 0.25rem;
 }
 
+/* Requirements checklist */
+.req-checklist {
+  list-style: none;
+  padding-left: 0;
+}
+.req-check-item {
+  margin-bottom: 0.4rem;
+}
+.req-check-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  cursor: default;
+  font-weight: normal;
+}
+.req-checkbox {
+  margin: 0.2rem 0 0 0;
+  flex-shrink: 0;
+  accent-color: var(--accent);
+}
+.req-check-item .req-checkbox:checked + .req-check-text {
+  color: var(--text);
+  text-decoration: line-through;
+  opacity: 0.85;
+}
+.course-list.req-checklist {
+  list-style: none;
+  padding-left: 0;
+}
+.course-list.req-checklist li {
+  margin-bottom: 0.4rem;
+}
+
 .req-desc {
   margin: 0;
   font-size: 0.9rem;
   color: var(--text-muted);
   line-height: 1.5;
+}
+
+.req-desc.req-note {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  font-style: italic;
 }
 
 .req-desc a {

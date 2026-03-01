@@ -724,6 +724,7 @@ function setCurrentMajor(majorId) {
 
 function savePlan() {
   localStorage.setItem(getPlanStorageKey(), JSON.stringify(plan));
+  renderRequirements();
 }
 
 function updateMajorUI() {
@@ -1212,22 +1213,119 @@ function bindButtons() {
   });
 }
 
+function planContainsCourse(code) {
+  const normalized = normalizeCourseCode(code);
+  for (let s = 0; s < (plan && plan.length); s++) {
+    const found = (plan[s] || []).some(c => normalizeCourseCode(ensureCourseCode(c.code)) === normalized);
+    if (found) return true;
+  }
+  return false;
+}
+
+function getTotalPlanHours() {
+  let h = 0;
+  for (let s = 0; s < (plan && plan.length); s++) {
+    (plan[s] || []).forEach(c => { h += (c.hours ?? getHours(c.code)); });
+  }
+  return h;
+}
+
+function getUpperDivisionPlanHours() {
+  let h = 0;
+  for (let s = 0; s < (plan && plan.length); s++) {
+    (plan[s] || []).forEach(c => {
+      const code = ensureCourseCode(c.code);
+      const m = code && code.match(/([A-Z]+)\s*(\d+)/);
+      if (m) {
+        const num = parseInt(m[2], 10);
+        if (num >= 300 && num < 500) h += (c.hours ?? getHours(c.code));
+      }
+    });
+  }
+  return h;
+}
+
+function reqCheckItem(checked, labelHtml) {
+  return `<li class="req-check-item"><label class="req-check-label"><input type="checkbox" class="req-checkbox" ${checked ? 'checked' : ''} disabled tabindex="-1" aria-hidden="true"><span class="req-check-text">${labelHtml}</span></label></li>`;
+}
+
+function getPlanCourseCodes() {
+  const codes = [];
+  for (let s = 0; s < (plan && plan.length); s++) {
+    (plan[s] || []).forEach(c => { codes.push(typeof c.code === 'string' ? c.code : ''); });
+  }
+  return codes;
+}
+
+function planSatisfiesGenEd(label) {
+  const codes = getPlanCourseCodes();
+  const lower = (s) => (s || '').toLowerCase();
+  const has = (fn) => codes.some(c => fn(lower(c)));
+  switch (label) {
+    case 'Composition I':
+      return has(c => c.includes('composition') && !c.includes('advanced'));
+    case 'Advanced Composition':
+      return has(c => c.includes('advanced composition') || c.includes('advanced comp'));
+    case 'Humanities & Arts':
+      return has(c => c.includes('humanities') || c.includes('arts'));
+    case 'Natural Sciences & Technology':
+      return has(c => c.includes('natural') || c.includes('science') || c.includes('technology') || c.includes('natrual'));
+    case 'Social & Behavioral Sciences':
+      return has(c => c.includes('social') || c.includes('behavioral'));
+    case 'Cultural Studies':
+      return codes.filter(c => lower(c).includes('gen ed') || lower(c).includes('cultural')).length >= 3;
+    case 'Quantitative Reasoning':
+      return codes.some(c => /^MATH\s*\d+/.test((c || '').trim()));
+    case 'Language':
+      return has(c => c.includes('language'));
+    default:
+      return false;
+  }
+}
+
 function renderRequirements() {
   if (!currentMajor) return;
+  const totalPlanHrs = getTotalPlanHours();
+  const upperDivHrs = getUpperDivisionPlanHours();
+  const requiredHrs = typeof currentMajor.totalHours === 'number' ? currentMajor.totalHours : 128;
+  const gradEl = document.getElementById('req-graduation');
+  if (gradEl) {
+    gradEl.innerHTML = [
+      reqCheckItem(totalPlanHrs >= requiredHrs, `Minimum <strong>${currentMajor.totalHours}</strong> hours for graduation`),
+      reqCheckItem(false, 'Minimum <strong>Technical GPA 2.0</strong> (CS and Math courses)'),
+      reqCheckItem(upperDivHrs >= 40, 'Minimum <strong>40 hours</strong> upper-division (300–400 level)')
+    ].join('');
+  }
+  const genedItems = [
+    { label: 'Composition I', desc: '(4–6h)' },
+    { label: 'Advanced Composition', desc: '(3h)' },
+    { label: 'Humanities & Arts', desc: '(6h)' },
+    { label: 'Natural Sciences & Technology', desc: '(6h)' },
+    { label: 'Social & Behavioral Sciences', desc: '(6h)' },
+    { label: 'Cultural Studies', desc: '(3 courses, 3h each)' },
+    { label: 'Quantitative Reasoning', desc: '(6–10h)' },
+    { label: 'Language', desc: '(3rd level)' }
+  ];
+  const genedEl = document.getElementById('req-gened');
+  if (genedEl) {
+    genedEl.innerHTML = genedItems.map(item => {
+      const checked = planSatisfiesGenEd(item.label);
+      return reqCheckItem(checked, `${escapeHtml(item.label)} ${escapeHtml(item.desc)}`);
+    }).join('');
+  }
   const coreEl = document.getElementById('req-core');
   const mathEl = document.getElementById('req-math');
   const orientEl = document.getElementById('req-orient');
   const teamEl = document.getElementById('req-team');
   const xReqEl = document.getElementById('req-x');
-  const xElectiveEl = document.getElementById('req-x-elective');
-  if (coreEl) coreEl.innerHTML = currentMajor.coreCourses.map(c => `<li><strong>${c.code}</strong> ${c.name} (${c.hours}h)</li>`).join('');
-  if (mathEl) mathEl.innerHTML = (currentMajor.mathScience || []).map(c => `<li><strong>${c.code}</strong> ${c.name} (${c.hours}h)</li>`).join('');
-  if (orientEl) orientEl.innerHTML = (currentMajor.orientation || []).map(c => `<li><strong>${c.code}</strong> ${c.name} (${c.hours}h)</li>`).join('');
+  if (coreEl) coreEl.innerHTML = currentMajor.coreCourses.map(c => reqCheckItem(planContainsCourse(c.code), `<strong>${escapeHtml(c.code)}</strong> ${escapeHtml(c.name)} (${c.hours}h)`)).join('');
+  if (mathEl) mathEl.innerHTML = (currentMajor.mathScience || []).map(c => reqCheckItem(planContainsCourse(c.code), `<strong>${escapeHtml(c.code)}</strong> ${escapeHtml(c.name)} (${c.hours}h)`)).join('');
+  if (orientEl) orientEl.innerHTML = (currentMajor.orientation || []).map(c => reqCheckItem(planContainsCourse(c.code), `<strong>${escapeHtml(c.code)}</strong> ${escapeHtml(c.name)} (${c.hours}h)`)).join('');
   if (teamEl) {
     const list = currentMajor.teamProjectCourses || [];
     teamEl.innerHTML = list.map(code => {
       const name = (typeof CS_ELECTIVE_NAMES !== 'undefined' && CS_ELECTIVE_NAMES[code]) || code;
-      return `<li><strong>${code}</strong> ${name}</li>`;
+      return reqCheckItem(planContainsCourse(code), `<strong>${escapeHtml(code)}</strong> ${escapeHtml(name)}`);
     }).join('');
     teamEl.closest('.req-section').style.display = list.length ? '' : 'none';
   }
@@ -1235,7 +1333,7 @@ function renderRequirements() {
   const xElectiveSection = document.getElementById('req-section-x-elective');
   const xElectiveTextEl = document.getElementById('req-x-elective-text');
   if (xReqEl && currentMajor.xRequiredCourses && currentMajor.xRequiredCourses.length > 0) {
-    xReqEl.innerHTML = currentMajor.xRequiredCourses.map(c => `<li><strong>${c.code}</strong> ${c.name} (${c.hours}h)</li>`).join('');
+    xReqEl.innerHTML = currentMajor.xRequiredCourses.map(c => reqCheckItem(planContainsCourse(c.code), `<strong>${escapeHtml(c.code)}</strong> ${escapeHtml(c.name)} (${c.hours}h)`)).join('');
     if (xSection) xSection.style.display = '';
   } else if (xSection) xSection.style.display = 'none';
   if (currentMajor.xElectiveText && xElectiveTextEl) {
@@ -1246,8 +1344,6 @@ function renderRequirements() {
   if (techSection) techSection.style.display = (currentMajor.hasTechnicalElectives) ? '' : 'none';
   const advSection = document.getElementById('req-section-adv');
   if (advSection) advSection.style.display = (currentMajor.hasAdvancedElectives) ? '' : 'none';
-  const reqTotalHrs = document.getElementById('req-total-hrs');
-  if (reqTotalHrs && currentMajor) reqTotalHrs.textContent = currentMajor.totalHours;
   const introCatalog = document.getElementById('req-intro-catalog');
   if (introCatalog && currentMajor && currentMajor.catalogUrl) introCatalog.href = currentMajor.catalogUrl.replace(/\/$/, '') + '/#degreerequirementstext';
 }
