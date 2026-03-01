@@ -200,7 +200,7 @@ function fillTechnicalElectivesFromCategories() {
         if (usedInPlan.has(code)) return false;
         if (!prereqsSatisfied(code, semIdx)) return false;
         const newHours = semHours - 3 + getHours(code);
-        if (newHours > MAX_HOURS_PER_SEMESTER) return false;
+        if (newHours > getMaxHoursForSemester(semIdx)) return false;
         return true;
       });
 
@@ -260,7 +260,7 @@ function fillAdvancedElectivesFromCategories() {
         if (usedInPlan.has(code)) return false;
         if (!prereqsSatisfied(code, semIdx)) return false;
         const newHours = semHours - 3 + getHours(code);
-        if (newHours > MAX_HOURS_PER_SEMESTER) return false;
+        if (newHours > getMaxHoursForSemester(semIdx)) return false;
         return true;
       });
 
@@ -366,11 +366,15 @@ function isCoreCS(code) {
 }
 
 function isTechElective(code) {
-  return (code.startsWith('CS 4') || code.startsWith('CS 5')) && !['CS 400', 'CS 401', 'CS 402', 'CS 403', 'CS 491'].includes(code);
+  if (!code || typeof code !== 'string') return false;
+  const c = normalizeCourseCode(code);
+  return (c.startsWith('CS 4') || c.startsWith('CS 5')) && !['CS 400', 'CS 401', 'CS 402', 'CS 403', 'CS 491'].includes(c);
 }
 
 function isAdvancedElective(code) {
-  return code.startsWith('CS 4') || code.startsWith('CS 5') || /^[A-Z]+ \d{3}$/.test(code);
+  if (!code || typeof code !== 'string') return false;
+  const c = normalizeCourseCode(code);
+  return c.startsWith('CS 4') || c.startsWith('CS 5') || /^[A-Z]+\s*\d{3}$/.test(c.trim());
 }
 
 function isTeamProject(code) {
@@ -478,15 +482,71 @@ function buildPostreqMap() {
 }
 
 const MAX_HOURS_PER_SEMESTER = 18;
+const MAX_HOURS_WITH_OVERRIDE = 20; // only after a prior semester has >= 18 credits
 const MIN_HOURS_PER_SEMESTER = 12;
 const MIN_SEMESTERS = 8;
 
 const FILLER_COURSE = { code: 'Free elective', hours: 3 };
 
-/** Ensure each semester has at least MIN_HOURS_PER_SEMESTER and total plan hours >= major total. */
+/** Fall 1st semester (index 0) is ALWAYS max 18 — no exceptions. Other semesters: max 20 only if a prior semester has >= 18 credits. */
+function getMaxHoursForSemester(semIndex) {
+  const s = Number(semIndex);
+  if (s === 0 || isNaN(s)) return MAX_HOURS_PER_SEMESTER;
+  for (let i = 0; i < s && i < (plan && plan.length); i++) {
+    const h = (plan[i] || []).reduce((sum, c) => sum + (c.hours ?? getHours(c.code)), 0);
+    if (h >= MAX_HOURS_PER_SEMESTER) return MAX_HOURS_WITH_OVERRIDE;
+  }
+  return MAX_HOURS_PER_SEMESTER;
+}
+
+/** Max for semester s given plan array. Fall 1st sem (s=0) ALWAYS 18. */
+function getMaxHoursForSemesterFromPlan(s, planArray) {
+  const idx = Number(s);
+  if (idx === 0 || isNaN(idx)) return MAX_HOURS_PER_SEMESTER;
+  for (let i = 0; i < idx && i < (planArray && planArray.length); i++) {
+    const h = (planArray[i] || []).reduce((sum, c) => sum + (c.hours ?? getHours(c.code)), 0);
+    if (h >= MAX_HOURS_PER_SEMESTER) return MAX_HOURS_WITH_OVERRIDE;
+  }
+  return MAX_HOURS_PER_SEMESTER;
+}
+
+/** Same for replan. Fall 1st sem (s=0) ALWAYS 18. */
+function getMaxHoursInReplan(s, fixedHours, affectedHoursInSem) {
+  const idx = Number(s);
+  if (idx === 0 || isNaN(idx)) return MAX_HOURS_PER_SEMESTER;
+  for (let i = 0; i < idx; i++) {
+    const h = (fixedHours[i] || 0) + (affectedHoursInSem[i] || 0);
+    if (h >= MAX_HOURS_PER_SEMESTER) return MAX_HOURS_WITH_OVERRIDE;
+  }
+  return MAX_HOURS_PER_SEMESTER;
+}
+
+/** Enforce first semester (index 0) never exceeds 18 credits. Move excess to semester 1. Returns true if plan was changed. */
+function enforceFirstSemesterMax18() {
+  if (!Array.isArray(plan) || !plan[0]) return false;
+  let total = (plan[0] || []).reduce((sum, c) => sum + (c.hours ?? getHours(c.code)), 0);
+  if (total <= MAX_HOURS_PER_SEMESTER) return false;
+  const overflow = [];
+  for (let j = (plan[0] || []).length - 1; j >= 0 && total > MAX_HOURS_PER_SEMESTER; j--) {
+    const c = plan[0][j];
+    const h = c.hours ?? getHours(c.code);
+    plan[0].splice(j, 1);
+    overflow.unshift(c);
+    total -= h;
+  }
+  if (overflow.length) {
+    plan[1] = plan[1] || [];
+    overflow.forEach(c => plan[1].unshift(c));
+    return true;
+  }
+  return false;
+}
+
+/** Ensure each semester has at least MIN_HOURS_PER_SEMESTER and total plan hours >= major total (at least 128). */
 function ensurePlanMeetsMinAndTotalHours(planArray) {
   if (!currentMajor || !Array.isArray(planArray)) return;
-  const targetTotal = typeof currentMajor.totalHours === 'number' ? currentMajor.totalHours : 128;
+  const majorTotal = typeof currentMajor.totalHours === 'number' ? currentMajor.totalHours : 128;
+  const targetTotal = Math.max(128, majorTotal);
   const numSems = Math.max(planArray.length, MIN_SEMESTERS);
   while (planArray.length < numSems) planArray.push([]);
 
@@ -506,14 +566,18 @@ function ensurePlanMeetsMinAndTotalHours(planArray) {
   }
   while (totalHours() < targetTotal) {
     let added = false;
-    for (let s = 0; s < numSems && totalHours() < targetTotal; s++) {
-      if (semHours(s) < MAX_HOURS_PER_SEMESTER) {
+    for (let s = 0; s < planArray.length && totalHours() < targetTotal; s++) {
+      const maxH = getMaxHoursForSemesterFromPlan(s, planArray);
+      if (semHours(s) < maxH) {
         planArray[s].push({ ...FILLER_COURSE });
         added = true;
         break;
       }
     }
-    if (!added) break;
+    if (!added) {
+      planArray.push([]);
+      planArray[planArray.length - 1].push({ ...FILLER_COURSE });
+    }
   }
 }
 
@@ -592,6 +656,7 @@ function replanSchedule() {
 
   if (affectedList.length === 0) {
     ensurePlanMeetsMinAndTotalHours(plan);
+    enforceFirstSemesterMax18();
     return;
   }
 
@@ -658,7 +723,8 @@ function replanSchedule() {
     const totalHours = hoursPerCode[code] || getHours(code);
     const earliest = earliestSem(code, assignment);
     let s = earliest;
-    while ((fixedHours[s] || 0) + (affectedHoursInSem[s] || 0) + totalHours > MAX_HOURS_PER_SEMESTER) s++;
+    const maxFor = (idx) => getMaxHoursInReplan(idx, fixedHours, affectedHoursInSem);
+    while ((fixedHours[s] || 0) + (affectedHoursInSem[s] || 0) + totalHours > maxFor(s)) s++;
     assignment[code] = s;
     affectedHoursInSem[s] = (affectedHoursInSem[s] || 0) + totalHours;
   }
@@ -680,6 +746,7 @@ function replanSchedule() {
   plan.length = 0;
   for (let i = 0; i < newPlan.length; i++) plan.push(newPlan[i]);
   ensurePlanMeetsMinAndTotalHours(plan);
+  enforceFirstSemesterMax18();
   lastDeleted = null;
 }
 
@@ -694,6 +761,7 @@ function loadPlan() {
           const code = ensureCourseCode(typeof c === 'string' ? c : (c && c.code));
           return { code, hours: (c && c.hours) ?? getHours(code) };
         }) : []);
+        enforceFirstSemesterMax18();
       }
     }
     const settingsRaw = localStorage.getItem(SETTINGS_KEY);
@@ -723,6 +791,10 @@ function setCurrentMajor(majorId) {
 }
 
 function savePlan() {
+  if (enforceFirstSemesterMax18()) {
+    renderSemesters();
+    updateProgress();
+  }
   localStorage.setItem(getPlanStorageKey(), JSON.stringify(plan));
   renderRequirements();
 }
@@ -785,7 +857,9 @@ function renderSemesters() {
     const past = isPastSemester(i);
     const locked = isSemesterLocked(i);
     const lockLabel = locked ? 'Unlock to edit' : 'Lock semester';
-    const lockIcon = `<svg class="lock-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`;
+    const lockIconClosed = `<svg class="lock-icon lock-icon-closed" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`;
+    const lockIconOpen = `<svg class="lock-icon lock-icon-open" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11 L7 4 Q12 1 17 4 L17 11" class="lock-shackle-open"/></svg>`;
+    const lockIcons = `<span class="lock-icon-wrap">${lockIconClosed}${lockIconOpen}</span>`;
 
     const chips = (courses || []).map((c, j) => {
       const code = c.code;
@@ -823,7 +897,7 @@ function renderSemesters() {
       <div class="${cardClasses.join(' ')}" data-semester="${i}">
         <div class="semester-header">
           <div class="semester-header-left">
-            ${past ? `<button type="button" class="lock-btn" data-semester="${i}" title="${lockLabel}" aria-label="${lockLabel}">${lockIcon}</button>` : ''}
+            ${past ? `<button type="button" class="lock-btn" data-semester="${i}" data-locked="${locked}" title="${lockLabel}" aria-label="${lockLabel}">${lockIcons}</button>` : ''}
             <span class="semester-title">${semesterLabel(i)}</span>
           </div>
           <span class="semester-hours">${hours} hrs</span>
@@ -915,6 +989,13 @@ function renderSemesters() {
       if (!course) return;
       while (plan.length <= targetSem) plan.push([]);
       if (!Array.isArray(plan[targetSem])) plan[targetSem] = [];
+      const targetHours = (plan[targetSem] || []).reduce((sum, c) => sum + (c.hours ?? getHours(c.code)), 0);
+      const courseHours = course.hours ?? getHours(course.code);
+      const maxAllowed = getMaxHoursForSemester(targetSem);
+      if (targetHours + courseHours > maxAllowed) {
+        showAlertModal(`That semester cannot exceed ${maxAllowed} credit hours.`);
+        return;
+      }
       plan[srcSem].splice(srcIdx, 1);
       plan[targetSem].push(course);
       renderSemesters();
@@ -1078,13 +1159,18 @@ function updateProgress() {
   }
   const allCourses = coursesForProgress.map(c => c.code);
   const totalHours = coursesForProgress.reduce((sum, c) => sum + (c.hours ?? getHours(c.code)), 0);
-  const coreDone = allCourses.filter(isCoreCS).length;
-  const techCodes = allCourses.filter(isTechElective);
+  const coreDone = allCourses.filter(c => isCoreCS(normalizeCourseCode(c || ''))).length;
+  const techCodes = allCourses.filter(c => {
+    const code = normalizeCourseCode(c || '');
+    return code !== 'CS Technical elective' && isTechElective(code);
+  });
   const techCount = techCodes.length;
-  const techHours = techCodes.reduce((sum, code) => sum + getHours(code), 0);
+  const techHours = techCodes.reduce((sum, code) => sum + getHours(normalizeCourseCode(code || '')), 0);
   const advancedCodes = allCourses.filter(c => {
-    if (isTechElective(c)) return false;
-    return isAdvancedElective(c) || /^[A-Z]+ \d{3}$/.test(c) && !CORE_CODES.has(c) && !MATH_SCIENCE_CODES.has(c) && !ORIENT_CODES.has(c);
+    const code = normalizeCourseCode(c || '');
+    if (code === 'CS Technical elective' || code === 'CS Advanced elective') return false;
+    if (isTechElective(code)) return false;
+    return isAdvancedElective(code) || /^[A-Z]+\s+\d{3}$/.test(code) && !CORE_CODES.has(code) && !MATH_SCIENCE_CODES.has(code) && !ORIENT_CODES.has(code);
   });
   const advCount = advancedCodes.length;
   const xCodes = (currentMajor && currentMajor.xRequiredCourses) ? currentMajor.xRequiredCourses.map(c => c.code) : [];
@@ -1151,6 +1237,17 @@ function bindButtons() {
         return;
       }
 
+      const currentSemHours = (plan[semIdx] || []).reduce((sum, c) => sum + (c.hours ?? getHours(c.code)), 0);
+      const newCourseHours = getHours(code);
+      const maxAllowed = getMaxHoursForSemester(semIdx);
+      if (currentSemHours + newCourseHours > maxAllowed) {
+        const msg = maxAllowed > MAX_HOURS_PER_SEMESTER
+          ? `Cannot add ${code}. That semester would exceed 20 credit hours (max 20 when a prior semester has more than 18).`
+          : `Cannot add ${code}. That semester would exceed 18 credit hours. You can take up to 20 only after a prior semester has more than 18.`;
+        showAlertModal(msg);
+        return;
+      }
+
       // Enforce prerequisites from cs_prerequisites_uiuc.csv
       if (PREREQS_LOADED && !prereqsSatisfied(code, semIdx)) {
         const msg = prereqsMissingMessage(code, semIdx);
@@ -1160,7 +1257,7 @@ function bindButtons() {
         }
       }
 
-      plan[semIdx].push({ code, hours: getHours(code) });
+      plan[semIdx].push({ code, hours: newCourseHours });
 
       document.getElementById('course-select').value = '';
 
@@ -1464,10 +1561,20 @@ function loadSampleIntoPlan() {
       } else {
         code = ensureCourseCode(match ? match[0] : label);
       }
-      plan[semIdx].push({ code, hours: getHours(code) });
+      const hours = getHours(code);
+      if (semIdx === 0) {
+        const currentH = (plan[0] || []).reduce((sum, c) => sum + (c.hours ?? getHours(c.code)), 0);
+        if (currentH + hours > MAX_HOURS_PER_SEMESTER) {
+          plan[1] = plan[1] || [];
+          plan[1].push({ code, hours });
+          return;
+        }
+      }
+      plan[semIdx].push({ code, hours });
     });
   });
 
+  enforceFirstSemesterMax18();
   renderSemesters();
   updateProgress();
   savePlan();

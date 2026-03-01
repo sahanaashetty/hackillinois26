@@ -51,7 +51,7 @@ body {
 }
 
 .header-actions #replan-schedule-btn {
-  margin-top: 0.25rem;
+  margin-top: 0.5rem;
 }
 
 .major-select-row {
@@ -82,6 +82,12 @@ body {
 .major-select {
   min-width: 220px;
   max-width: 100%;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239baec9' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.4rem center;
+  background-size: 12px;
+  padding-right: 1.75rem;
 }
 .plan-right .add-course-row input#course-select,
 .plan-right .add-course-row select#semester-select {
@@ -183,11 +189,12 @@ body {
   margin-bottom: 1rem;
 }
 
+.plan-right .progress-card h3,
 .progress-card h3 {
   margin: 0 0 0.5rem 0;
   font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--text-muted);
+  font-weight: 800;
+  color: #fff;
 }
 
 .progress-pie-wrap {
@@ -306,8 +313,35 @@ body {
   line-height: 1;
   border-radius: 4px;
 }
+.lock-icon-wrap {
+  position: relative;
+  display: inline-flex;
+  width: 14px;
+  height: 14px;
+}
 .lock-btn .lock-icon {
-  display: block;
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 14px;
+  height: 14px;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+}
+.lock-btn .lock-icon-closed {
+  opacity: 0;
+}
+.lock-btn .lock-icon-open {
+  opacity: 1;
+}
+.lock-btn[data-locked="true"] .lock-icon-closed {
+  opacity: 1;
+}
+.lock-btn[data-locked="true"] .lock-icon-open {
+  opacity: 0;
+}
+.lock-btn .lock-shackle-open {
+  stroke-dasharray: none;
 }
 .lock-btn:hover {
   color: var(--text);
@@ -486,12 +520,13 @@ body {
   margin-bottom: 1rem;
 }
 
+.plan-right .add-course-label,
 .add-course-label,
 .add-course label {
   display: block;
   font-size: 0.85rem;
-  font-weight: 700;
-  color: var(--text-muted);
+  font-weight: 800;
+  color: #fff;
   margin-bottom: 0.5rem;
 }
 
