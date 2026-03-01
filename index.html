@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>UIUC CS Class Planner</title>
+  <title>UIUC Major Class Planner</title>
   <link rel="stylesheet" href="styles.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -12,8 +12,13 @@
 <body>
   <div class="app">
     <header class="header">
-      <h1>UIUC CS Class Planner</h1>
-      <p class="subtitle">Plan your Computer Science BS — 128 hours · <a href="https://catalog.illinois.edu/undergraduate/engineering/computer-science-bs/#degreerequirementstext" target="_blank" rel="noopener">Degree Requirements</a> · <a href="https://catalog.illinois.edu/undergraduate/engineering/computer-science-bs/#samplesequencetext" target="_blank" rel="noopener">Sample Sequence</a></p>
+      <h1>UIUC Major Class Planner</h1>
+      <div class="major-select-row">
+        <label for="major-select" class="major-select-label">Major</label>
+        <select id="major-select" class="major-select"></select>
+        <a id="catalog-link" class="catalog-link" href="#" target="_blank" rel="noopener">Catalog</a>
+      </div>
+      <p class="subtitle"><span id="subtitle-hours">128</span> hours · <a id="degree-req-link" href="#" target="_blank" rel="noopener">Degree Requirements</a> · <a id="sample-seq-link" href="#" target="_blank" rel="noopener">Sample Sequence</a></p>
     </header>
 
     <nav class="tabs">
@@ -27,12 +32,13 @@
       <section id="plan" class="panel active">
         <div class="progress-card">
           <h3>Progress</h3>
-          <div class="progress-stats">
-            <div class="stat"><span class="stat-value" id="total-hours">0</span><span class="stat-label">/ 128 hrs</span></div>
-            <div class="stat"><span class="stat-value" id="core-done">0</span><span class="stat-label">/ 11 core CS</span></div>
-            <div class="stat"><span class="stat-value" id="tech-elective-count">0</span><span class="stat-label">/ 6 tech electives</span></div>
-            <div class="stat"><span class="stat-value" id="tech-elective-hrs">0</span><span class="stat-label">/ 18 tech hrs</span></div>
-            <div class="stat"><span class="stat-value" id="adv-elective-count">0</span><span class="stat-label">/ 2 advanced</span></div>
+          <div class="progress-stats" id="progress-stats">
+            <div class="stat"><span class="stat-value" id="total-hours">0</span><span class="stat-label" id="total-hours-label">/ 128 hrs</span></div>
+            <div class="stat"><span class="stat-value" id="core-done">0</span><span class="stat-label" id="core-done-label">/ 11 core</span></div>
+            <div class="stat stat-tech" id="stat-tech"><span class="stat-value" id="tech-elective-count">0</span><span class="stat-label">/ 6 tech electives</span></div>
+            <div class="stat stat-tech" id="stat-tech-hrs"><span class="stat-value" id="tech-elective-hrs">0</span><span class="stat-label">/ 18 tech hrs</span></div>
+            <div class="stat stat-adv" id="stat-adv"><span class="stat-value" id="adv-elective-count">0</span><span class="stat-label">/ 2 advanced</span></div>
+            <div class="stat stat-x" id="stat-x"><span class="stat-value" id="x-done">0</span><span class="stat-label" id="x-done-label">/ 0 X required</span></div>
           </div>
         </div>
 
@@ -61,11 +67,11 @@
 
       <!-- Degree Requirements (from catalog) -->
       <section id="requirements" class="panel">
-        <p class="req-intro">From the <a href="https://catalog.illinois.edu/undergraduate/engineering/computer-science-bs/#degreerequirementstext" target="_blank" rel="noopener">2025–2026 catalog</a>. Always confirm with your advisor.</p>
+        <p class="req-intro">From the <a id="req-intro-catalog" href="https://catalog.illinois.edu/" target="_blank" rel="noopener">2025–2026 catalog</a>. Always confirm with your advisor.</p>
         <div class="req-section">
           <h3>Graduation Requirements</h3>
-          <ul class="req-list">
-            <li>Minimum <strong>128 hours</strong> for graduation</li>
+          <ul class="req-list" id="req-graduation">
+            <li>Minimum <strong id="req-total-hrs">128</strong> hours for graduation</li>
             <li>Minimum <strong>Technical GPA 2.0</strong> (CS and Math courses)</li>
             <li>Minimum <strong>40 hours</strong> upper-division (300–400 level)</li>
           </ul>
@@ -83,10 +89,18 @@
           <ul class="course-list" id="req-math"></ul>
         </div>
         <div class="req-section">
-          <h3>Computer Science Technical Core (35 hrs)</h3>
+          <h3>Computer Science Technical Core</h3>
           <ul class="course-list" id="req-core"></ul>
         </div>
-        <div class="req-section">
+        <div class="req-section" id="req-section-x" style="display: none;">
+          <h3>X / Second Major Required Courses</h3>
+          <ul class="course-list" id="req-x"></ul>
+        </div>
+        <div class="req-section" id="req-section-x-elective" style="display: none;">
+          <h3>X / Second Major Electives</h3>
+          <p class="req-desc" id="req-x-elective-text"></p>
+        </div>
+        <div class="req-section" id="req-section-tech">
           <h3>Technical Electives (min 18 hrs)</h3>
           <p class="req-desc">Minimum <strong>6 courses</strong>, 18+ hours, from CS 397 and CS 400-level (excluding CS 400, 401, 402, 403, 491). At least <strong>one</strong> must be a team project course. At least <strong>three</strong> from a single focus area. CS 498/598 Special Topics may count with approval.</p>
           <h4>Team project courses</h4>
@@ -94,7 +108,7 @@
           <h4>Focus areas</h4>
           <p class="req-desc">Software Foundations; Algorithms and Models; Intelligence and Big Data; Human and Social Impact; Media; Scientific &amp; HPC; Distributed Systems &amp; Security; Machines. See <a href="https://catalog.illinois.edu/undergraduate/engineering/computer-science-bs/#degreerequirementstext" target="_blank" rel="noopener">catalog</a> for full course lists per area.</p>
         </div>
-        <div class="req-section">
+        <div class="req-section" id="req-section-adv">
           <h3>Advanced Electives (min 6 hrs)</h3>
           <p class="req-desc">Minimum <strong>2 courses</strong>, 6+ hours, distinct from technical electives. 400-level letter-grade coursework in any department; CS 397 may apply with limits.</p>
         </div>

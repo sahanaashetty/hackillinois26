@@ -1,4 +1,12 @@
 const STORAGE_KEY = 'uiuc-cs-planner';
+const MAJOR_STORAGE_KEY = STORAGE_KEY + '-major';
+
+let currentMajorId = 'cs';
+let currentMajor = null;
+
+function getPlanStorageKey() {
+  return STORAGE_KEY + '-plan-' + (currentMajorId || 'cs');
+}
 
 // Prerequisite data from cs_prerequisites_uiuc.csv
 // Keys: course code with space (e.g. "CS 225"). Values: array of groups; each group is OR, groups are AND.
@@ -57,24 +65,36 @@ function parseCSVLine(line) {
   return out;
 }
 
-const CORE_CODES = new Set(CORE_CS.map(c => c.code));
-const MATH_SCIENCE_CODES = new Set(MATH_SCIENCE.map(c => c.code === 'Science elective' ? 'Science elective' : c.code));
-const ORIENT_CODES = new Set(['ENG 100', 'CS 210', 'CS 211']);
+let CORE_CODES = new Set();
+let MATH_SCIENCE_CODES = new Set();
+let ORIENT_CODES = new Set(['ENG 100', 'CS 210', 'CS 211']);
+let ALL_COURSES = [];
+let COURSE_BY_CODE = {};
 
-// Build flat course list for dropdown (core + math + orientation + tech electives + generic)
-const ALL_COURSES = [
-  ...CORE_CS,
-  ...MATH_SCIENCE.filter(c => c.code !== 'Science elective'),
-  { code: 'Science elective', name: 'Science elective (NST list)', hours: 3 },
-  ...ORIENTATION,
-  ...TECHNICAL_ELECTIVES.map(code => ({ code, name: CS_ELECTIVE_NAMES[code] || code, hours: 3 })),  { code: 'Free elective', name: 'Free elective', hours: 3 },
-  { code: 'Gen Ed', name: 'General Education', hours: 3 },
-  { code: 'Composition I', name: 'Composition I', hours: 4 },
-  { code: 'Language', name: 'Language (3rd level)', hours: 4 },
-];
-
-const COURSE_BY_CODE = {};
-ALL_COURSES.forEach(c => { COURSE_BY_CODE[c.code] = c; });
+function rebuildCourseData() {
+  if (!currentMajor) return;
+  CORE_CODES = new Set(currentMajor.coreCourses.map(c => c.code));
+  MATH_SCIENCE_CODES = new Set((currentMajor.mathScience || []).map(c => c.code === 'Science elective' ? 'Science elective' : c.code));
+  const mathScienceList = (currentMajor.mathScience || []).filter(c => c.code !== 'Science elective');
+  ALL_COURSES = [
+    ...currentMajor.coreCourses,
+    ...mathScienceList,
+    { code: 'Science elective', name: 'Science elective (NST list)', hours: 3 },
+    ...(currentMajor.orientation || []),
+    ...(currentMajor.xRequiredCourses || []),
+  ];
+  if (currentMajor.hasTechnicalElectives && currentMajor.technicalElectives) {
+    ALL_COURSES.push(...currentMajor.technicalElectives.map(code => ({ code, name: (typeof CS_ELECTIVE_NAMES !== 'undefined' && CS_ELECTIVE_NAMES[code]) || code, hours: 3 })));
+  }
+  ALL_COURSES.push(
+    { code: 'Free elective', name: 'Free elective', hours: 3 },
+    { code: 'Gen Ed', name: 'General Education', hours: 3 },
+    { code: 'Composition I', name: 'Composition I', hours: 4 },
+    { code: 'Language', name: 'Language (3rd level)', hours: 4 }
+  );
+  COURSE_BY_CODE = {};
+  ALL_COURSES.forEach(c => { COURSE_BY_CODE[c.code] = c; });
+}
 
 // Hours for CS tech electives (default 3)
 function getHours(courseCode) {
@@ -97,7 +117,8 @@ function isAdvancedElective(code) {
 }
 
 function isTeamProject(code) {
-  return TEAM_PROJECT_COURSES.includes(code);
+  const list = currentMajor && currentMajor.teamProjectCourses ? currentMajor.teamProjectCourses : [];
+  return list.includes(code);
 }
 
 function getCourseUrl(code) {
@@ -173,12 +194,108 @@ function prereqsMissingMessage(code, semIdx) {
   return missingGroups.map(grp => grp.length === 1 ? grp[0] : `one of: ${grp.join(', ')}`).join('; ');
 }
 
+// Postrequisites: for each course A, list of courses B that have A as a prerequisite
+function buildPostreqMap() {
+  const postreq = {};
+  for (const course of Object.keys(PREREQ_MAP)) {
+    const groups = PREREQ_MAP[course];
+    for (const grp of groups) {
+      for (const p of grp) {
+        if (!postreq[p]) postreq[p] = [];
+        if (!postreq[p].includes(course)) postreq[p].push(course);
+      }
+    }
+  }
+  return postreq;
+}
+
+const MAX_HOURS_PER_SEMESTER = 18;
+const MIN_SEMESTERS = 8;
+
+/**
+ * Replan schedule: enforce prerequisite order across semesters, then pack courses
+ * so each semester is at most MAX_HOURS_PER_SEMESTER. Adds more semesters if needed.
+ */
+function replanSchedule() {
+  const postreqMap = buildPostreqMap();
+
+  // Flatten plan to (code, hours, currentSem)
+  const all = [];
+  for (let s = 0; s < plan.length; s++) {
+    (plan[s] || []).forEach(c => {
+      all.push({ code: c.code, hours: c.hours ?? getHours(c.code), currentSem: s });
+    });
+  }
+
+  const codeToSem = {};
+  all.forEach(({ code, currentSem }) => { codeToSem[code] = currentSem; });
+
+  // Earliest semester for each course: must be after all prereq groups (AND of ORs)
+  function earliestSem(code) {
+    const groups = PREREQ_MAP[code];
+    if (!groups || groups.length === 0) return 0;
+    let e = 0;
+    for (const grp of groups) {
+      const inPlan = grp.filter(p => codeToSem.hasOwnProperty(p));
+      if (inPlan.length === 0) continue; // no prereq from this group in plan
+      const minSem = Math.min(...inPlan.map(p => codeToSem[p]));
+      e = Math.max(e, minSem + 1);
+    }
+    return e;
+  }
+
+  // Topological order: prereqs before dependents (edges: prereq -> course)
+  const order = [];
+  const visited = new Set();
+  function visit(code) {
+    if (visited.has(code)) return;
+    visited.add(code);
+    const groups = PREREQ_MAP[code];
+    if (groups) {
+      for (const grp of groups) {
+        for (const p of grp) {
+          if (codeToSem.hasOwnProperty(p)) visit(p);
+        }
+      }
+    }
+    order.push(code);
+  }
+  all.forEach(({ code }) => visit(code));
+
+  // Assign each course to earliest feasible semester (>= earliestSem, under hour cap)
+  const semHours = {};
+  const assignment = {};
+  for (const code of order) {
+    const hours = (all.find(x => x.code === code) || {}).hours ?? getHours(code);
+    const earliest = earliestSem(code);
+    let s = earliest;
+    while ((semHours[s] || 0) + hours > MAX_HOURS_PER_SEMESTER) s++;
+    assignment[code] = s;
+    semHours[s] = (semHours[s] || 0) + hours;
+  }
+
+  const numSems = Math.max(MIN_SEMESTERS, ...Object.values(assignment)) + 1;
+  if (numSems > plan.length) {
+    for (let i = plan.length; i < numSems; i++) plan.push([]);
+  }
+
+  const newPlan = Array.from({ length: numSems }, () => []);
+  all.forEach(({ code, hours }) => {
+    const s = assignment[code];
+    newPlan[s].push({ code, hours });
+  });
+
+  for (let i = 0; i < newPlan.length; i++) plan[i] = newPlan[i];
+  if (plan.length > numSems) plan.length = numSems;
+}
+
 function loadPlan() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const key = getPlanStorageKey();
+    const raw = localStorage.getItem(key);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length === 8) {
+      if (Array.isArray(parsed) && parsed.length >= 8) {
         plan = parsed.map(sem => Array.isArray(sem) ? sem.map(c => typeof c === 'string' ? { code: c, hours: getHours(c) } : { ...c, hours: c.hours ?? getHours(c.code) }) : []);
       }
     }
@@ -195,8 +312,48 @@ function loadPlan() {
   } catch (_) {}
 }
 
+function setCurrentMajor(majorId) {
+  const found = typeof MAJORS !== 'undefined' && MAJORS.find(m => m.id === majorId);
+  if (!found) return;
+  currentMajorId = majorId;
+  currentMajor = found;
+  try {
+    localStorage.setItem(MAJOR_STORAGE_KEY, currentMajorId);
+  } catch (_) {}
+  rebuildCourseData();
+  updateMajorUI();
+}
+
 function savePlan() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(plan));
+  localStorage.setItem(getPlanStorageKey(), JSON.stringify(plan));
+}
+
+function updateMajorUI() {
+  const sub = document.getElementById('subtitle-hours');
+  const catalogLink = document.getElementById('catalog-link');
+  const reqLink = document.getElementById('degree-req-link');
+  const sampleLink = document.getElementById('sample-seq-link');
+  if (sub && currentMajor) sub.textContent = currentMajor.totalHours;
+  const base = (currentMajor && currentMajor.catalogUrl) ? currentMajor.catalogUrl.replace(/\/$/, '') : '';
+  if (catalogLink) { catalogLink.href = base || 'https://catalog.illinois.edu/'; catalogLink.textContent = 'Catalog'; }
+  if (reqLink) { reqLink.href = base ? base + '/#degreerequirementstext' : '#'; }
+  if (sampleLink) { sampleLink.href = base ? base + '/#samplesequencetext' : '#'; }
+  const totalLabel = document.getElementById('total-hours-label');
+  const coreLabel = document.getElementById('core-done-label');
+  const xStat = document.getElementById('stat-x');
+  const xDoneLabel = document.getElementById('x-done-label');
+  if (totalLabel && currentMajor) totalLabel.textContent = '/ ' + currentMajor.totalHours + ' hrs';
+  if (coreLabel && currentMajor) coreLabel.textContent = '/ ' + currentMajor.coreCourses.length + ' core';
+  const hasX = currentMajor && currentMajor.xRequiredCourses && currentMajor.xRequiredCourses.length > 0;
+  if (xStat) xStat.style.display = hasX ? '' : 'none';
+  if (xDoneLabel && currentMajor && hasX) xDoneLabel.textContent = '/ ' + currentMajor.xRequiredCourses.length + ' X required';
+  const techStat = document.getElementById('stat-tech');
+  const techHrsStat = document.getElementById('stat-tech-hrs');
+  const advStat = document.getElementById('stat-adv');
+  const showTech = currentMajor && currentMajor.hasTechnicalElectives;
+  if (techStat) techStat.style.display = showTech ? '' : 'none';
+  if (techHrsStat) techHrsStat.style.display = showTech ? '' : 'none';
+  if (advStat) advStat.style.display = (currentMajor && currentMajor.hasAdvancedElectives) ? '' : 'none';
 }
 
 function saveSettings() {
@@ -274,15 +431,18 @@ function renderSemesters() {
     `;
   }
 
+  const numYears = Math.ceil(Math.max(plan.length, 8) / 2);
   let html = '';
-  for (let year = 0; year < 4; year++) {
+  for (let year = 0; year < numYears; year++) {
     const fallIdx = year * 2;
     const springIdx = fallIdx + 1;
+    const fallCourses = fallIdx < plan.length ? (plan[fallIdx] || []) : [];
+    const springCourses = springIdx < plan.length ? (plan[springIdx] || []) : [];
 
     html += `
       <div class="year-row">
-        ${semesterHTML(plan[fallIdx] || [], fallIdx)}
-        ${semesterHTML(plan[springIdx] || [], springIdx)}
+        ${semesterHTML(fallCourses, fallIdx)}
+        ${semesterHTML(springCourses, springIdx)}
       </div>
     `;
   }
@@ -444,7 +604,6 @@ function showConfirmModal(message) {
 }
 
 function updateProgress() {
-  // Only count courses in completed or in-progress semesters (up to and including current)
   const lastCountedIndex = currentSemesterIndex !== null ? currentSemesterIndex : 7;
   const coursesForProgress = plan.slice(0, lastCountedIndex + 1).flat();
   const allCourses = coursesForProgress.map(c => c.code);
@@ -458,12 +617,19 @@ function updateProgress() {
     return isAdvancedElective(c) || /^[A-Z]+ \d{3}$/.test(c) && !CORE_CODES.has(c) && !MATH_SCIENCE_CODES.has(c) && !ORIENT_CODES.has(c);
   });
   const advCount = advancedCodes.length;
+  const xCodes = (currentMajor && currentMajor.xRequiredCourses) ? currentMajor.xRequiredCourses.map(c => c.code) : [];
+  const xDone = xCodes.length ? allCourses.filter(c => xCodes.includes(c)).length : 0;
 
   document.getElementById('total-hours').textContent = totalHours;
   document.getElementById('core-done').textContent = coreDone;
-  document.getElementById('tech-elective-count').textContent = techCount;
-  document.getElementById('tech-elective-hrs').textContent = techHours;
-  document.getElementById('adv-elective-count').textContent = advCount;
+  const tcEl = document.getElementById('tech-elective-count');
+  const thEl = document.getElementById('tech-elective-hrs');
+  const advEl = document.getElementById('adv-elective-count');
+  const xEl = document.getElementById('x-done');
+  if (tcEl) tcEl.textContent = techCount;
+  if (thEl) thEl.textContent = techHours;
+  if (advEl) advEl.textContent = advCount;
+  if (xEl) xEl.textContent = xDone;
 }
 
 function populateDropdowns() {
@@ -530,6 +696,17 @@ function bindButtons() {
     });
   }
 
+  const replanBtn = document.getElementById('replan-schedule-btn');
+  if (replanBtn) {
+    replanBtn.addEventListener('click', () => {
+      replanSchedule();
+      renderSemesters();
+      updateProgress();
+      savePlan();
+      showAlertModal('Schedule replanned. Prerequisite order is enforced and courses are packed into semesters (max ' + MAX_HOURS_PER_SEMESTER + ' hrs/semester). Extra semesters added if needed.');
+    });
+  }
+
   document.querySelectorAll('.use-sample-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
       const ok = await showConfirmModal('Replace your current plan with the sample sequence?');
@@ -551,28 +728,61 @@ function bindButtons() {
 }
 
 function renderRequirements() {
+  if (!currentMajor) return;
   const coreEl = document.getElementById('req-core');
   const mathEl = document.getElementById('req-math');
   const orientEl = document.getElementById('req-orient');
   const teamEl = document.getElementById('req-team');
-  if (coreEl) coreEl.innerHTML = CORE_CS.map(c => `<li><strong>${c.code}</strong> ${c.name} (${c.hours}h)</li>`).join('');
-  if (mathEl) mathEl.innerHTML = MATH_SCIENCE.map(c => `<li><strong>${c.code}</strong> ${c.name} (${c.hours}h)</li>`).join('');
-  if (orientEl) orientEl.innerHTML = ORIENTATION.map(c => `<li><strong>${c.code}</strong> ${c.name} (${c.hours}h)</li>`).join('');
-  if (teamEl) teamEl.innerHTML = TEAM_PROJECT_COURSES.map(code => {
-    const name = (typeof CS_ELECTIVE_NAMES !== 'undefined' && CS_ELECTIVE_NAMES[code]) || code;
-    return `<li><strong>${code}</strong> ${name}</li>`;
-  }).join('');
+  const xReqEl = document.getElementById('req-x');
+  const xElectiveEl = document.getElementById('req-x-elective');
+  if (coreEl) coreEl.innerHTML = currentMajor.coreCourses.map(c => `<li><strong>${c.code}</strong> ${c.name} (${c.hours}h)</li>`).join('');
+  if (mathEl) mathEl.innerHTML = (currentMajor.mathScience || []).map(c => `<li><strong>${c.code}</strong> ${c.name} (${c.hours}h)</li>`).join('');
+  if (orientEl) orientEl.innerHTML = (currentMajor.orientation || []).map(c => `<li><strong>${c.code}</strong> ${c.name} (${c.hours}h)</li>`).join('');
+  if (teamEl) {
+    const list = currentMajor.teamProjectCourses || [];
+    teamEl.innerHTML = list.map(code => {
+      const name = (typeof CS_ELECTIVE_NAMES !== 'undefined' && CS_ELECTIVE_NAMES[code]) || code;
+      return `<li><strong>${code}</strong> ${name}</li>`;
+    }).join('');
+    teamEl.closest('.req-section').style.display = list.length ? '' : 'none';
+  }
+  const xSection = document.getElementById('req-section-x');
+  const xElectiveSection = document.getElementById('req-section-x-elective');
+  const xElectiveTextEl = document.getElementById('req-x-elective-text');
+  if (xReqEl && currentMajor.xRequiredCourses && currentMajor.xRequiredCourses.length > 0) {
+    xReqEl.innerHTML = currentMajor.xRequiredCourses.map(c => `<li><strong>${c.code}</strong> ${c.name} (${c.hours}h)</li>`).join('');
+    if (xSection) xSection.style.display = '';
+  } else if (xSection) xSection.style.display = 'none';
+  if (currentMajor.xElectiveText && xElectiveTextEl) {
+    xElectiveTextEl.textContent = currentMajor.xElectiveText;
+    if (xElectiveSection) xElectiveSection.style.display = '';
+  } else if (xElectiveSection) xElectiveSection.style.display = 'none';
+  const techSection = document.getElementById('req-section-tech');
+  if (techSection) techSection.style.display = (currentMajor.hasTechnicalElectives) ? '' : 'none';
+  const advSection = document.getElementById('req-section-adv');
+  if (advSection) advSection.style.display = (currentMajor.hasAdvancedElectives) ? '' : 'none';
+  const reqTotalHrs = document.getElementById('req-total-hrs');
+  if (reqTotalHrs && currentMajor) reqTotalHrs.textContent = currentMajor.totalHours;
+  const introCatalog = document.getElementById('req-intro-catalog');
+  if (introCatalog && currentMajor && currentMajor.catalogUrl) introCatalog.href = currentMajor.catalogUrl.replace(/\/$/, '') + '/#degreerequirementstext';
 }
 
 function getSampleSequenceHTML() {
+  const seq = (currentMajor && currentMajor.sampleSequence) || [];
+  if (seq.length === 0) {
+    const url = (currentMajor && currentMajor.catalogUrl) ? currentMajor.catalogUrl + '#samplesequencetext' : 'https://catalog.illinois.edu/';
+    return `<p class="sample-no-sequence">No sample sequence in planner for this major. See the <a href="${url}" target="_blank" rel="noopener">catalog</a> for a suggested sequence.</p>`;
+  }
   const years = [1, 2, 3, 4];
-  const fallHours = [16, 16, 16, 16];
-  const springHours = [15, 17, 16, 16];
+  const defaultFallHours = [16, 16, 16, 16];
+  const defaultSpringHours = [15, 17, 16, 16];
   return years.map((year, yi) => {
-    const fall = SAMPLE_SEQUENCE.find(s => s.year === year && s.semester === 'Fall');
-    const spring = SAMPLE_SEQUENCE.find(s => s.year === year && s.semester === 'Spring');
+    const fall = seq.find(s => s.year === year && s.semester === 'Fall');
+    const spring = seq.find(s => s.year === year && s.semester === 'Spring');
     const fallCourses = (fall && fall.courses) ? fall.courses.map(c => `<div class="sample-course">${c}</div>`).join('') : '';
     const springCourses = (spring && spring.courses) ? spring.courses.map(c => `<div class="sample-course">${c}</div>`).join('') : '';
+    const fallHrs = (fall && typeof fall.hours === 'number') ? fall.hours : (defaultFallHours[yi] || 0);
+    const springHrs = (spring && typeof spring.hours === 'number') ? spring.hours : (defaultSpringHours[yi] || 0);
     return `
       <div class="sample-year">
         <h4 class="sample-year-title">Year ${year}</h4>
@@ -580,12 +790,12 @@ function getSampleSequenceHTML() {
           <div class="sample-col sample-fall">
             <div class="sample-col-label">First Semester (Fall)</div>
             <div class="sample-courses-vertical">${fallCourses}</div>
-            <div class="sample-hours">${fallHours[yi] || 0} hrs</div>
+            <div class="sample-hours">${fallHrs} hrs</div>
           </div>
           <div class="sample-col sample-spring">
             <div class="sample-col-label">Second Semester (Spring)</div>
             <div class="sample-courses-vertical">${springCourses}</div>
-            <div class="sample-hours">${springHours[yi] || 0} hrs</div>
+            <div class="sample-hours">${springHrs} hrs</div>
           </div>
         </div>
       </div>`;
@@ -600,9 +810,40 @@ function renderSampleSequence() {
   if (planEl) planEl.innerHTML = html;
 }
 
+function populateMajorSelect() {
+  const sel = document.getElementById('major-select');
+  if (!sel || typeof MAJORS === 'undefined') return;
+  sel.innerHTML = MAJORS.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+  sel.value = currentMajorId;
+  sel.addEventListener('change', () => {
+    const id = sel.value;
+    if (id === currentMajorId) return;
+    setCurrentMajor(id);
+    loadPlan();
+    populateDropdowns();
+    renderSemesters();
+    updateProgress();
+    renderRequirements();
+    renderSampleSequence();
+  });
+}
+
 async function init() {
-  loadPlan();
+  try {
+    const savedMajor = localStorage.getItem(MAJOR_STORAGE_KEY);
+    if (savedMajor && typeof MAJORS !== 'undefined' && MAJORS.some(m => m.id === savedMajor)) {
+      currentMajorId = savedMajor;
+    }
+  } catch (_) {}
+  if (typeof MAJORS !== 'undefined' && MAJORS.length > 0) {
+    currentMajor = MAJORS.find(m => m.id === currentMajorId) || MAJORS[0];
+    currentMajorId = currentMajor.id;
+    rebuildCourseData();
+  }
   await loadPrerequisites();
+  populateMajorSelect();
+  updateMajorUI();
+  loadPlan();
   populateDropdowns();
   renderSemesters();
   updateProgress();
@@ -612,9 +853,14 @@ async function init() {
 }
 
 function loadSampleIntoPlan() {
+  const seq = (currentMajor && currentMajor.sampleSequence) || [];
+  if (seq.length === 0) {
+    showAlertModal('No sample sequence available for this major. See the catalog for a suggested plan.');
+    return;
+  }
   plan = Array.from({ length: 8 }, () => []);
 
-  SAMPLE_SEQUENCE.forEach(s => {
+  seq.forEach(s => {
     const semIdx = (s.year - 1) * 2 + (s.semester === 'Fall' ? 0 : 1);
 
     s.courses.forEach(label => {

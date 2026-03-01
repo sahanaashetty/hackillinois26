@@ -144,3 +144,215 @@ const CS_ELECTIVE_NAMES = {
   'CS 497': 'CS Team Project',
   'CS 498': 'Special Topics',
 };
+
+// --- Major selection: CS (regular) + CS+ from csplus.csv ---
+function parseCourseCodeStr(str) {
+  if (!str || typeof str !== 'string') return [];
+  const out = [];
+  const parts = str.trim().split(/\s*,\s*/);
+  for (const p of parts) {
+    const alt = p.split(/\s*\/\s*/);
+    for (const a of alt) {
+      const m = a.trim().match(/^([A-Za-z]+)\s*(\d{3,})$/);
+      if (m) out.push(`${m[1].toUpperCase()} ${m[2]}`);
+    }
+  }
+  return [...new Set(out)];
+}
+
+function courseObjectsFromCodes(codes, nameLookup = {}) {
+  return codes.map(code => ({
+    code,
+    name: nameLookup[code] || code,
+    hours: code.match(/^\w+\s+(\d{3})$/) ? 3 : 3,
+  }));
+}
+
+// Catalog URLs for majors (UIUC 2025-26)
+const MAJOR_CATALOG_URLS = {
+  'cs': 'https://catalog.illinois.edu/undergraduate/engineering/computer-science-bs/',
+  'CS+ANSC': 'https://catalog.illinois.edu/undergraduate/',
+  'CS+ECON': 'https://catalog.illinois.edu/undergraduate/eng_las/computer-science-economics-bslas/',
+  'CS+ANTH': 'https://catalog.illinois.edu/undergraduate/eng_las/computer-science-anthropology-bslas/',
+  'CS+ASTR': 'https://catalog.illinois.edu/undergraduate/eng_las/astronomy-computer-science-bslas/',
+  'CS+CHEM': 'https://catalog.illinois.edu/undergraduate/eng_las/computer-science-chemistry-bslas/',
+  'CS+GIS': 'https://catalog.illinois.edu/undergraduate/eng_las/geography-geographic-information-science-computer-science-bslas/',
+  'CS+LING': 'https://catalog.illinois.edu/undergraduate/eng_las/computer-science-linguistics-bslas/',
+  'CS+MUSIC': 'https://catalog.illinois.edu/undergraduate/eng_faa/computer-science-music-bs/',
+  'CS+CPSC': 'https://catalog.illinois.edu/undergraduate/',
+  'CS+EDU-LS': 'https://catalog.illinois.edu/undergraduate/',
+  'CS+EDU-SE': 'https://catalog.illinois.edu/undergraduate/',
+  'CS+PHYS': 'https://catalog.illinois.edu/undergraduate/engineering/computer-science-physics-bs/',
+  'CS+BIOE': 'https://catalog.illinois.edu/undergraduate/engineering/computer-science-bioengineering-bs/',
+  'STAT+CS': 'https://catalog.illinois.edu/undergraduate/eng_las/statistics-computer-science-bslas/',
+  'MATH+CS': 'https://catalog.illinois.edu/undergraduate/eng_las/mathematics-computer-science-bslas/',
+};
+
+const CS_PLUS_ROWS = [
+  { major_code: 'CS+ANSC', major_name: 'Computer Science + Animal Sciences', college: 'ACES', total_hours: 126, cs_core_courses: 'CS100,CS124,CS128,CS173,CS222,CS225,CS233,CS341,CS357,CS361,CS374', x_required_courses: 'ANSC100,ANSC221,ANSC222,ANSC223,ANSC224,ANSC398,ANSC498', x_elective_requirements: 'Animal Sciences electives (choose from department list)', additional_math_science: 'MATH220/221,MATH231,MATH225/257,CHEM102,CHEM103,CHEM104,CHEM105', notes: 'Requires science-heavy foundation.' },
+  { major_code: 'CS+ECON', major_name: 'Computer Science + Economics', college: 'LAS', total_hours: 120, cs_core_courses: 'CS124,CS128,CS173,CS222,CS225,CS233,CS341,CS357,CS374', x_required_courses: 'ECON102,ECON103,ECON202,ECON203,ECON302,ECON303', x_elective_requirements: '400-level ECON electives (as specified by department)', additional_math_science: 'MATH220/221,MATH231,MATH241', notes: 'Strong quantitative focus.' },
+  { major_code: 'CS+ANTH', major_name: 'Computer Science + Anthropology', college: 'LAS', total_hours: 120, cs_core_courses: 'CS124,CS128,CS173,CS222,CS225,CS233,CS341,CS357,CS374', x_required_courses: 'ANTH100,ANTH101,ANTH102', x_elective_requirements: 'Advanced Anthropology electives (department approved)', additional_math_science: 'MATH220/221,MATH231', notes: 'Blends computational analysis with cultural and social research.' },
+  { major_code: 'CS+ASTR', major_name: 'Computer Science + Astronomy', college: 'LAS', total_hours: 120, cs_core_courses: 'CS124,CS128,CS173,CS222,CS225,CS233,CS341,CS357,CS374', x_required_courses: 'ASTR100,ASTR122,ASTR310', x_elective_requirements: 'Advanced Astronomy electives', additional_math_science: 'MATH220/221,MATH231,MATH241,PHYS211,PHYS212', notes: 'Heavy physics and math integration.' },
+  { major_code: 'CS+CHEM', major_name: 'Computer Science + Chemistry', college: 'LAS', total_hours: 120, cs_core_courses: 'CS124,CS128,CS173,CS222,CS225,CS233,CS341,CS357,CS374', x_required_courses: 'CHEM102,CHEM103,CHEM104,CHEM105,CHEM232,CHEM233', x_elective_requirements: 'Advanced Chemistry electives', additional_math_science: 'MATH220/221,MATH231,MATH241', notes: 'Requires full chemistry sequence including labs.' },
+  { major_code: 'CS+GIS', major_name: 'Computer Science + Geography & GIS', college: 'LAS', total_hours: 120, cs_core_courses: 'CS124,CS128,CS173,CS222,CS225,CS233,CS341,CS357,CS374', x_required_courses: 'GGIS101,GGIS104,GGIS379', x_elective_requirements: 'Advanced GIS electives', additional_math_science: 'MATH220/221,MATH231', notes: 'Focus on spatial data and GIS.' },
+  { major_code: 'CS+LING', major_name: 'Computer Science + Linguistics', college: 'LAS', total_hours: 120, cs_core_courses: 'CS124,CS128,CS173,CS222,CS225,CS233,CS341,CS357,CS374', x_required_courses: 'LING100,LING301,LING307,LING406', x_elective_requirements: 'Advanced: at least 3 of TRST 415, LING 490, CS 446; plus Linguistics Breadth (200+ LING, 3h). See catalog.', additional_math_science: 'MATH220/221,MATH225/257,MATH231', notes: 'Strong AI and NLP crossover potential. STAT 200/212 or CS 361 for stats.' },
+  { major_code: 'CS+MUSIC', major_name: 'Computer Science + Music', college: 'FAA', total_hours: 120, cs_core_courses: 'CS124,CS128,CS173,CS222,CS225,CS233,CS341,CS357,CS374', x_required_courses: 'MUS101,MUS107,MUS201', x_elective_requirements: 'Advanced Music electives', additional_math_science: 'MATH220/221,MATH231', notes: 'Combines computing with music theory and technology.' },
+  { major_code: 'CS+CPSC', major_name: 'Computer Science + Crop Sciences', college: 'ACES', total_hours: 126, cs_core_courses: 'CS100,CS124,CS128,CS173,CS222,CS225,CS233,CS341,CS357,CS361,CS374', x_required_courses: 'CPSC110,CPSC112', x_elective_requirements: 'Advanced Crop Sciences electives', additional_math_science: 'MATH220/221,MATH231,CHEM102,CHEM103', notes: 'Agricultural systems and computational modeling.' },
+  { major_code: 'CS+EDU-LS', major_name: 'Computer Science + Education (Learning Sciences)', college: 'Education', total_hours: 120, cs_core_courses: 'CS124,CS128,CS173,CS222,CS225,CS233,CS341,CS357,CS374', x_required_courses: 'EPSY201,CI210', x_elective_requirements: 'Education electives per program', additional_math_science: 'MATH220/221,MATH231', notes: 'Computational tools for learning environments.' },
+  { major_code: 'CS+EDU-SE', major_name: 'Computer Science + Education (Secondary Ed)', college: 'Education', total_hours: 120, cs_core_courses: 'CS124,CS128,CS173,CS222,CS225,CS233,CS341,CS357,CS374', x_required_courses: 'CI401,CI403', x_elective_requirements: 'Teaching practicum required', additional_math_science: 'MATH220/221,MATH231', notes: 'High school CS teaching licensure.' },
+  { major_code: 'CS+PHYS', major_name: 'Computer Science + Physics', college: 'Engineering', total_hours: 128, cs_core_courses: 'CS124,CS128,CS173,CS222,CS225,CS233,CS341,CS357,CS374', x_required_courses: 'PHYS211,PHYS212,PHYS213,PHYS214,PHYS225,PHYS326', x_elective_requirements: 'Advanced Physics electives (300-400 level)', additional_math_science: 'MATH221,MATH231,MATH241,MATH285', notes: 'Highly math-intensive.' },
+  { major_code: 'CS+BIOE', major_name: 'Computer Science + Bioengineering', college: 'Engineering', total_hours: 128, cs_core_courses: 'CS124,CS128,CS173,CS222,CS225,CS233,CS341,CS357,CS374', x_required_courses: 'BIOE120,BIOE201,BIOE202,BIOE205', x_elective_requirements: 'Advanced Bioengineering electives', additional_math_science: 'MATH221,MATH231,MATH241,MATH285,CHEM102,CHEM103,PHYS211,PHYS212', notes: 'Computational biology and medical systems.' },
+  { major_code: 'STAT+CS', major_name: 'Statistics & Computer Science', college: 'LAS', total_hours: 120, cs_core_courses: 'CS124,CS128,CS173,CS222,CS225,CS233,CS341,CS357,CS374', x_required_courses: 'STAT107,STAT200,STAT400,STAT410', x_elective_requirements: 'Advanced Statistics electives (400-level STAT)', additional_math_science: 'MATH220/221,MATH231,MATH241', notes: 'Probability, statistical modeling, data science.' },
+  { major_code: 'MATH+CS', major_name: 'Mathematics & Computer Science', college: 'LAS', total_hours: 120, cs_core_courses: 'CS124,CS128,CS173,CS222,CS225,CS233,CS341,CS357,CS374', x_required_courses: 'MATH347,MATH416,MATH417', x_elective_requirements: 'Advanced Mathematics electives (400-level MATH)', additional_math_science: 'MATH221,MATH231,MATH241', notes: 'Heavy theoretical focus; ideal for theory or graduate study.' },
+];
+
+const CORE_CS_NAMES = {};
+CORE_CS.forEach(c => { CORE_CS_NAMES[c.code] = c.name; });
+
+// Sample sequences from UIUC catalog (#samplesequencetext). Each major's catalog has a Sample Sequence table.
+const MAJOR_SAMPLE_SEQUENCES = {
+  'CS+LING': [
+    { year: 1, semester: 'Fall', courses: ['Free elective (1h)', 'CS 100', 'LING 100', 'CS 124', 'Composition I or Gen Ed', 'Free elective (2h)'], hours: 14 },
+    { year: 1, semester: 'Spring', courses: ['CS 128', 'CS 173', 'Linguistics Breadth (200–400 level)', 'MATH 220 or 221', 'Gen Ed or Composition I'], hours: 16 },
+    { year: 2, semester: 'Fall', courses: ['CS 222', 'CS 225', 'MATH 225 or 257', 'Gen Ed', 'Language (3rd level)'], hours: 15 },
+    { year: 2, semester: 'Spring', courses: ['STAT 200, STAT 212, or CS 361', 'CS 233 or CS 340', 'MATH 231', 'Gen Ed', 'Language (4th level)'], hours: 16 },
+    { year: 3, semester: 'Fall', courses: ['CS 341 (or CS 400-level)', 'LING 301', 'TRST 415', 'Gen Ed', 'Gen Ed'], hours: 16 },
+    { year: 3, semester: 'Spring', courses: ['CS 374', 'CS 400-level or Free elective', 'LING 307', 'Gen Ed', 'Gen Ed'], hours: 16 },
+    { year: 4, semester: 'Fall', courses: ['CS 421', 'LING 406', 'Gen Ed', 'Free elective', 'Free elective'], hours: 14 },
+    { year: 4, semester: 'Spring', courses: ['CS 446', 'LING 490', 'Free elective', 'Free elective', 'Free elective'], hours: 13 },
+  ],
+  // https://catalog.illinois.edu/undergraduate/eng_las/statistics-computer-science-bslas/#samplesequencetext
+  'STAT+CS': [
+    { year: 1, semester: 'Fall', courses: ['STAT 107, 200, or 212', 'CS 100', 'CS 124', 'MATH 220 or 221', 'Composition I or Gen Ed', 'Gen Ed'], hours: 17 },
+    { year: 1, semester: 'Spring', courses: ['CS 128', 'CS 173', 'MATH 231', 'Gen Ed or Composition I', 'Gen Ed'], hours: 15 },
+    { year: 2, semester: 'Fall', courses: ['STAT 400', 'CS 222', 'CS 225', 'MATH 241', 'Language (3rd level)'], hours: 17 },
+    { year: 2, semester: 'Spring', courses: ['STAT 410', 'CS 340 or CS 233', 'MATH 257 or 415', 'Gen Ed', 'Language (4th level)'], hours: 16 },
+    { year: 3, semester: 'Fall', courses: ['STAT 425', 'CS 341 (or CS 400-level)', 'CS 357', 'Gen Ed', 'Free elective'], hours: 15 },
+    { year: 3, semester: 'Spring', courses: ['STAT 426', 'CS 374', 'Free elective or CS 400-level', 'Gen Ed', 'Gen Ed'], hours: 16 },
+    { year: 4, semester: 'Fall', courses: ['CS 421', 'Statistical Application Elective', 'Gen Ed', 'Free elective'], hours: 12 },
+    { year: 4, semester: 'Spring', courses: ['Computational Application Elective', 'Gen Ed', 'Gen Ed', 'Free elective'], hours: 12 },
+  ],
+  // https://catalog.illinois.edu/undergraduate/eng_las/mathematics-computer-science-bslas/#samplesequencetext
+  'MATH+CS': [
+    { year: 1, semester: 'Fall', courses: ['CS 100', 'MATH 220 or 221', 'Gen Ed', 'Composition I or Gen Ed', 'CS 124'], hours: 15 },
+    { year: 1, semester: 'Spring', courses: ['MATH 231', 'CS 128', 'CS 173', 'Gen Ed or Composition I', 'Gen Ed'], hours: 15 },
+    { year: 2, semester: 'Fall', courses: ['MATH 241', 'CS 225', 'CS 222', 'Language (3rd level)', 'Gen Ed'], hours: 16 },
+    { year: 2, semester: 'Spring', courses: ['MATH 347', 'MATH 415 or 416', 'CS 233 or 340', 'Language (4th level)', 'Free elective'], hours: 15 },
+    { year: 3, semester: 'Fall', courses: ['CS 361, MATH 461, or STAT 400', 'CS 341 (or CS 4XX)', 'MATH 441, 446, or 484', 'Gen Ed', 'Gen Ed'], hours: 16 },
+    { year: 3, semester: 'Spring', courses: ['CS 374', 'CS 357', 'MATH 444, 447, or 424', 'Gen Ed', 'Free elective'], hours: 15 },
+    { year: 4, semester: 'Fall', courses: ['CS 450', 'CS 421', 'MATH 412, 413, 417, or 427', 'Gen Ed', 'Gen Ed'], hours: 15 },
+    { year: 4, semester: 'Spring', courses: ['CS 473, 475, 476, 477, or MATH 414', 'Additional 400-level MATH or CS', 'Gen Ed', 'Free elective or CS 4XX'], hours: 13 },
+  ],
+  // https://catalog.illinois.edu/undergraduate/eng_las/computer-science-chemistry-bslas/#samplesequencetext
+  'CS+CHEM': [
+    { year: 1, semester: 'Fall', courses: ['Free elective', 'CS 100', 'CS 124', 'CHEM 102 or 202', 'CHEM 103 or 203', 'MATH 220 or 221', 'Gen Ed or Composition I'], hours: 17 },
+    { year: 1, semester: 'Spring', courses: ['CHEM 104 or 204', 'CHEM 105 or Free elective', 'CS 128', 'MATH 231', 'Composition I or Gen Ed'], hours: 14 },
+    { year: 2, semester: 'Fall', courses: ['CHEM 232 or 236', 'CS 173', 'Gen Ed', 'Language (3rd level)'], hours: 14 },
+    { year: 2, semester: 'Spring', courses: ['Advanced Chemistry', 'CS 225', 'CS 222', 'MATH 225 or 257', 'Language (4th level)'], hours: 15 },
+    { year: 3, semester: 'Fall', courses: ['CS 233 or 340', 'Advanced Chemistry', 'STAT 200, 212, or CS 361', 'Gen Ed', 'Free elective'], hours: 16 },
+    { year: 3, semester: 'Spring', courses: ['CS 341 (or CS 400-level)', 'Advanced Chemistry', 'Gen Ed', 'Gen Ed', 'Free elective'], hours: 15 },
+    { year: 4, semester: 'Fall', courses: ['CS 374', 'CHEM 440 or 442', 'CS 400-level or Free elective', 'Gen Ed', 'Free elective'], hours: 14 },
+    { year: 4, semester: 'Spring', courses: ['CS 421', 'Gen Ed', 'Gen Ed', 'Free elective'], hours: 15 },
+  ],
+  // https://catalog.illinois.edu/undergraduate/eng_las/computer-science-economics-bslas/#samplesequencetext
+  'CS+ECON': [
+    { year: 1, semester: 'Fall', courses: ['Free elective', 'CS 100', 'MATH 220 or 221', 'ECON 102 or 103', 'Composition I or Gen Ed', 'CS 124'], hours: 16 },
+    { year: 1, semester: 'Spring', courses: ['MATH 231', 'CS 128', 'ECON 103 or 102', 'CS 173', 'Gen Ed or Composition I'], hours: 15 },
+    { year: 2, semester: 'Fall', courses: ['CS 225', 'CS 233 or 340', 'ECON 202, STAT 200, 212, or CS 361', 'Language (3rd level)'], hours: 15 },
+    { year: 2, semester: 'Spring', courses: ['CS 222', 'CS 341 (or CS 400-level)', 'ECON 203', 'Language (4th level)', 'Gen Ed'], hours: 15 },
+    { year: 3, semester: 'Fall', courses: ['CS 421', 'ECON 302', 'CS 374', 'MATH 225 or 227', 'Gen Ed'], hours: 16 },
+    { year: 3, semester: 'Spring', courses: ['CS 400-level or Free elective', 'Gen Ed', 'Free elective', 'Free elective', 'Free elective'], hours: 15 },
+    { year: 4, semester: 'Fall', courses: ['Gen Ed', 'Gen Ed', 'ECON 400-level', 'ECON 400-level', 'Free elective'], hours: 14 },
+    { year: 4, semester: 'Spring', courses: ['Gen Ed', 'Gen Ed', 'ECON 400-level', 'ECON 400-level', 'Free elective'], hours: 14 },
+  ],
+  // https://catalog.illinois.edu/undergraduate/eng_las/computer-science-anthropology-bslas/#samplesequencetext
+  'CS+ANTH': [
+    { year: 1, semester: 'Fall', courses: ['Free elective', 'CS 100', 'ANTH Foundation', 'CS 124', 'Composition I or Gen Ed', 'Gen Ed'], hours: 15 },
+    { year: 1, semester: 'Spring', courses: ['CS 128', 'CS 173', 'ANTH Foundation', 'MATH 220 or 221', 'Gen Ed or Composition I'], hours: 16 },
+    { year: 2, semester: 'Fall', courses: ['CS 222', 'CS 225', 'MATH 225 or 257', 'Language (3rd level)', 'Gen Ed'], hours: 15 },
+    { year: 2, semester: 'Spring', courses: ['CS 233 or 340', 'STAT 200, 212, or CS 361', 'MATH 231', 'Language (4th level)', 'Gen Ed'], hours: 17 },
+    { year: 3, semester: 'Fall', courses: ['CS 341 (or CS 400-level)', 'ANTH Foundation', 'ANTH Elective', 'Gen Ed', 'Gen Ed'], hours: 16 },
+    { year: 3, semester: 'Spring', courses: ['CS 374', 'CS 400-level or Free elective', 'ANTH Elective', 'Gen Ed', 'Gen Ed'], hours: 16 },
+    { year: 4, semester: 'Fall', courses: ['ANTH 421', 'ANTH Foundation', 'Gen Ed', 'Free elective'], hours: 13 },
+    { year: 4, semester: 'Spring', courses: ['ANTH Foundation', 'Gen Ed', 'Free elective', 'Free elective'], hours: 12 },
+  ],
+  // https://catalog.illinois.edu/undergraduate/eng_faa/computer-science-music-bs/#samplesequencetext
+  'CS+MUSIC': [
+    { year: 1, semester: 'Fall', courses: ['FAA 101', 'MUS 100', 'MUS 101', 'MUS 107', 'CS 124', 'MATH 220 or 221', 'Composition I or Language (3rd)'], hours: 17 },
+    { year: 1, semester: 'Spring', courses: ['MUS 102', 'MUS 108', 'MUS 105', 'CS 128', 'CS 173', 'Language (3rd) or Composition I'], hours: 16 },
+    { year: 2, semester: 'Fall', courses: ['MUS 201', 'MUS 207', 'MUS 205', 'CS 222', 'CS 225', 'MATH 231', 'MATH 225 or 257'], hours: 16 },
+    { year: 2, semester: 'Spring', courses: ['MUS 202', 'MUS 208', 'MUS 305', 'MUS 172', 'CS 233', 'CS 361'], hours: 16 },
+    { year: 3, semester: 'Fall', courses: ['MUS 173', 'CS 341', 'ECE 402', 'Gen Ed', 'Gen Ed (Social/Behavioral + Cultural Studies)'], hours: 15 },
+    { year: 3, semester: 'Spring', courses: ['MUS 110', 'CS 374', 'CS 448', 'MUS 209'], hours: 13 },
+    { year: 4, semester: 'Fall', courses: ['MUS 299', 'MUS 313', 'MUS 407', 'CS 421', 'Gen Ed'], hours: 13 },
+    { year: 4, semester: 'Spring', courses: ['MUS 299', 'MUS 314', 'Gen Ed', 'Gen Ed', 'Gen Ed', 'Free elective'], hours: 14 },
+  ],
+  // https://catalog.illinois.edu/undergraduate/engineering/computer-science-physics-bs/#samplesequencetext
+  'CS+PHYS': [
+    { year: 1, semester: 'Fall', courses: ['MATH 221 (or 220)', 'PHYS 110', 'ENG 100', 'CS 124', 'Composition I or Gen Ed', 'Gen Ed (Cultural Studies)'], hours: 15 },
+    { year: 1, semester: 'Spring', courses: ['MATH 231', 'PHYS 211', 'CS 128', 'CS 173', 'Gen Ed or Composition I'], hours: 16 },
+    { year: 2, semester: 'Fall', courses: ['MATH 241', 'PHYS 212', 'PHYS 225', 'CS 225', 'Gen Ed (Cultural Studies)'], hours: 17 },
+    { year: 2, semester: 'Spring', courses: ['MATH 285', 'PHYS 213', 'PHYS 214', 'PHYS 246', 'CS 233 or 340', 'CS 222', 'Gen Ed (Cultural Studies)'], hours: 17 },
+    { year: 3, semester: 'Fall', courses: ['MATH 257 (or 416)', 'PHYS 325', 'CS 361 (or STAT 400)', 'PHYS Technical Elective', 'Gen Ed (Advanced Composition)'], hours: 15 },
+    { year: 3, semester: 'Spring', courses: ['CS 357 or 450', 'PHYS 435', 'CS Technical Elective', 'PHYS Technical Elective', 'Language (3rd level)'], hours: 16 },
+    { year: 4, semester: 'Fall', courses: ['PHYS 485 (or 486)', 'CS 374', 'Free elective', 'Free elective', 'Free elective'], hours: 15 },
+    { year: 4, semester: 'Spring', courses: ['PHYS 446', 'PHYS Technical Elective', 'PHYS Technical Elective', 'CS 341 (or CS Technical Elective)', 'Free elective'], hours: 17 },
+  ],
+  // https://catalog.illinois.edu/undergraduate/engineering/computer-science-bioengineering-bs/#samplesequencetext
+  'CS+BIOE': [
+    { year: 1, semester: 'Fall', courses: ['ENG 100', 'BIOE 100', 'MATH 221 (or 220)', 'CS 124', 'Composition I or Gen Ed', 'CHEM 102 (& 103) or MCB 150'], hours: 16 },
+    { year: 1, semester: 'Spring', courses: ['MATH 231', 'BIOE 120', 'PHYS 211', 'CS 128', 'CS 173', 'Gen Ed or Composition I'], hours: 17 },
+    { year: 2, semester: 'Fall', courses: ['MATH 241', 'PHYS 212', 'CS 222', 'CS 225', 'Gen Ed (Cultural Studies)'], hours: 16 },
+    { year: 2, semester: 'Spring', courses: ['MATH 285', 'MATH 257 or BIOE 210', 'CS 233 or 340', 'BIOE 205', 'Gen Ed (Cultural Studies)'], hours: 16 },
+    { year: 3, semester: 'Fall', courses: ['CS 341 (or CS Technical Elective)', 'BIOE 206', 'BIOE Technical Elective', 'Free elective', 'Language (3rd level)'], hours: 16 },
+    { year: 3, semester: 'Spring', courses: ['CS 374', 'BIOE 310', 'BIOE Technical Elective', 'CS Technical Elective', 'Upper Division Technical Elective'], hours: 16 },
+    { year: 4, semester: 'Fall', courses: ['CS 357 or 421', 'BIOE Technical Elective', 'BIOE Technical Elective', 'Free elective', 'Gen Ed (Advanced Composition) or BIOE 404'], hours: 15 },
+    { year: 4, semester: 'Spring', courses: ['BIOE 404 (or Gen Ed)', 'BIOE Technical Elective', 'Upper Division Technical Elective', 'Free elective or CS Technical Elective', 'Free elective'], hours: 16 },
+  ],
+};
+
+function buildCsPlusMajor(row) {
+  const coreCodes = parseCourseCodeStr(row.cs_core_courses);
+  const xCodes = parseCourseCodeStr(row.x_required_courses);
+  const mathScienceCodes = parseCourseCodeStr(row.additional_math_science);
+  const nameLookup = { ...CORE_CS_NAMES, ...CS_ELECTIVE_NAMES };
+  return {
+    id: row.major_code,
+    name: row.major_name,
+    college: row.college,
+    totalHours: parseInt(row.total_hours, 10) || 120,
+    coreCourses: courseObjectsFromCodes(coreCodes, nameLookup),
+    mathScience: courseObjectsFromCodes(mathScienceCodes, nameLookup),
+    orientation: ORIENTATION,
+    xRequiredCourses: courseObjectsFromCodes(xCodes, nameLookup),
+    xElectiveText: row.x_elective_requirements || '',
+    notes: row.notes || '',
+    catalogUrl: MAJOR_CATALOG_URLS[row.major_code] || 'https://catalog.illinois.edu/',
+    hasTechnicalElectives: false,
+    hasAdvancedElectives: false,
+    sampleSequence: MAJOR_SAMPLE_SEQUENCES[row.major_code] || null,
+  };
+}
+
+const MAJORS = [
+  {
+    id: 'cs',
+    name: 'Computer Science, BS',
+    college: 'Engineering',
+    totalHours: 128,
+    coreCourses: CORE_CS,
+    mathScience: MATH_SCIENCE,
+    orientation: ORIENTATION,
+    xRequiredCourses: [],
+    xElectiveText: '',
+    notes: '',
+    catalogUrl: 'https://catalog.illinois.edu/undergraduate/engineering/computer-science-bs/',
+    hasTechnicalElectives: true,
+    hasAdvancedElectives: true,
+    technicalElectives: TECHNICAL_ELECTIVES,
+    teamProjectCourses: TEAM_PROJECT_COURSES,
+    focusAreas: FOCUS_AREAS,
+    sampleSequence: SAMPLE_SEQUENCE,
+  },
+  ...CS_PLUS_ROWS.map(buildCsPlusMajor),
+];
