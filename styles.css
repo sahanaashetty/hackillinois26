@@ -468,6 +468,81 @@ body {
   margin-bottom: 0.5rem;
 }
 
+/* Technical electives by category (right column) */
+.tech-electives-by-category {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.tech-electives-by-category h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.tech-electives-by-category label {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 0.35rem;
+}
+
+#tech-category-select {
+  width: 100%;
+  padding: 0.35rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface2);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+}
+
+#tech-category-select option {
+  padding: 0.2rem 0;
+}
+
+#tech-category-select option:checked {
+  background: var(--accent);
+  color: white;
+}
+
+.tech-electives-list {
+  max-height: 280px;
+  overflow-y: auto;
+  font-size: 0.85rem;
+}
+
+.tech-electives-category-block {
+  margin-bottom: 0.75rem;
+}
+
+.tech-electives-category-title {
+  margin: 0 0 0.35rem 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.tech-electives-course-list {
+  margin: 0;
+  padding-left: 1.25rem;
+  list-style: disc;
+}
+
+.tech-electives-course-list li {
+  margin-bottom: 0.2rem;
+}
+
+.tech-electives-empty {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
 .add-course-row {
   display: flex;
   gap: 0.5rem;

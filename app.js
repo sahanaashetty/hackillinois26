@@ -95,6 +95,71 @@ async function loadCourseCatalog() {
   }
 }
 
+// Tech electives by category (from tech_electives.csv): category -> [course codes]
+let TECH_ELECTIVES_BY_CATEGORY = {};
+let TECH_ELECTIVE_CATEGORIES = [];
+
+async function loadTechElectives() {
+  try {
+    const res = await fetch('tech_electives.csv');
+    if (!res.ok) return;
+    const text = await res.text();
+    const lines = text.split(/\r?\n/).filter(Boolean);
+    const byCategory = {};
+    const categoriesSet = new Set();
+    for (let i = 0; i < lines.length; i++) {
+      const cols = parseCSVLine(lines[i]);
+      const course = (cols[0] || '').trim();
+      const category = (cols[1] || '').trim();
+      if (i === 0 && (course.toLowerCase() === 'course' || category.toLowerCase() === 'category')) continue;
+      if (!course || !category) continue;
+      const code = normalizeCourseCode(course);
+      if (!byCategory[category]) byCategory[category] = [];
+      byCategory[category].push(code);
+      categoriesSet.add(category);
+    }
+    TECH_ELECTIVES_BY_CATEGORY = byCategory;
+    TECH_ELECTIVE_CATEGORIES = Array.from(categoriesSet).sort();
+  } catch (err) {
+    console.error('Failed to load tech electives', err);
+  }
+}
+
+function initTechElectivesUI() {
+  const sel = document.getElementById('tech-category-select');
+  const listEl = document.getElementById('tech-electives-list');
+  if (!sel || !listEl) return;
+  const categories = Array.isArray(TECH_ELECTIVE_CATEGORIES) ? TECH_ELECTIVE_CATEGORIES : [];
+  sel.innerHTML = categories.map(cat => `<option value="${escapeHtml(cat)}">${escapeHtml(cat)}</option>`).join('');
+  sel.addEventListener('change', renderTechElectivesList);
+  renderTechElectivesList();
+}
+
+function renderTechElectivesList() {
+  const sel = document.getElementById('tech-category-select');
+  const listEl = document.getElementById('tech-electives-list');
+  if (!sel || !listEl) return;
+  const selected = Array.from(sel.selectedOptions || []).map(opt => opt.value);
+  if (selected.length === 0) {
+    listEl.innerHTML = '<p class="tech-electives-empty">Select one or more categories above (Ctrl+Click for multiple).</p>';
+    return;
+  }
+  const nameLookup = typeof CS_ELECTIVE_NAMES !== 'undefined' ? CS_ELECTIVE_NAMES : {};
+  const byCategory = TECH_ELECTIVES_BY_CATEGORY || {};
+  let html = '';
+  selected.forEach(category => {
+    const courses = byCategory[category] || [];
+    if (courses.length === 0) return;
+    html += `<div class="tech-electives-category-block"><h4 class="tech-electives-category-title">${escapeHtml(category)}</h4><ul class="tech-electives-course-list">`;
+    courses.forEach(code => {
+      const name = nameLookup[code] || (typeof COURSE_CATALOG_NAMES !== 'undefined' && COURSE_CATALOG_NAMES[code]) || code;
+      html += `<li><strong>${escapeHtml(code)}</strong> ${escapeHtml(name)}</li>`;
+    });
+    html += '</ul></div>';
+  });
+  listEl.innerHTML = html || '<p class="tech-electives-empty">No courses in selected categories.</p>';
+}
+
 function parseCSVLine(line) {
   const out = [];
   let cur = '';
@@ -136,7 +201,9 @@ function rebuildCourseData() {
     { code: 'Free elective', name: 'Free elective', hours: 3 },
     { code: 'Gen Ed', name: 'General Education', hours: 3 },
     { code: 'Composition I', name: 'Composition I', hours: 4 },
-    { code: 'Language', name: 'Language (3rd level)', hours: 4 }
+    { code: 'Language', name: 'Language (3rd level)', hours: 4 },
+    { code: 'CS Technical elective', name: 'CS Technical Elective (choose from list)', hours: 3 },
+    { code: 'CS Advanced elective', name: 'CS Advanced Elective (choose from list)', hours: 3 }
   );
   COURSE_BY_CODE = {};
   ALL_COURSES.forEach(c => { COURSE_BY_CODE[c.code] = c; });
@@ -147,6 +214,7 @@ function getHours(courseCode) {
   const c = COURSE_BY_CODE[courseCode];
   if (c) return c.hours;
   if (typeof courseCode === 'string' && courseCode.startsWith('Gen Ed')) return 3;
+  if (courseCode === 'CS Technical elective' || courseCode === 'CS Advanced elective') return 3;
   if (courseCode.startsWith('CS 4') || courseCode.startsWith('CS 5')) return 3;
   return 3;
 }
@@ -897,10 +965,20 @@ function updateProgress() {
   if (xEl) xEl.textContent = xDone;
 }
 
+function escapeHtml(str) {
+  if (str == null || typeof str !== 'string') return '';
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 function populateDropdowns() {
   const dataList = document.getElementById('course-options');
-  dataList.innerHTML = ALL_COURSES.map(c =>
-    `<option value="${c.code}">${c.code} — ${c.name}</option>`
+  if (!dataList) return;
+  dataList.innerHTML = (ALL_COURSES || []).map(c =>
+    `<option value="${escapeHtml(c.code)}">${escapeHtml(c.code)} — ${escapeHtml(c.name)}</option>`
   ).join('');
 
   const semSelect = document.getElementById('semester-select');
@@ -1107,6 +1185,7 @@ async function init() {
   }
   await loadPrerequisites();
   await loadCourseCatalog();
+  await loadTechElectives();
   populateMajorSelect();
   updateMajorUI();
   loadPlan();
@@ -1115,6 +1194,7 @@ async function init() {
   updateProgress();
   renderRequirements();
   renderSampleSequence();
+  initTechElectivesUI();
   bindButtons();
 }
 
@@ -1130,11 +1210,12 @@ function loadSampleIntoPlan() {
     const semIdx = (s.year - 1) * 2 + (s.semester === 'Fall' ? 0 : 1);
 
     s.courses.forEach(label => {
-      const match = label.match(/[A-Z]+ \d{3}|Science elective|Free elective|Gen Ed|Composition I|Language/);
+      const match = label.match(/[A-Z]+ \d{3}|Science elective|Free elective|Gen Ed|Composition I|Language|CS Technical elective|CS Advanced elective/);
       if (!match) return;
 
       let code = ensureCourseCode(match[0]);
       if (match[0] === 'Gen Ed') code = label;
+      if (match[0] === 'CS Technical elective' || match[0] === 'CS Advanced elective') code = match[0];
       plan[semIdx].push({ code, hours: getHours(code) });
     });
   });
