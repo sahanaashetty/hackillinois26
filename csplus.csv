@@ -1,0 +1,31 @@
+major_code,major_name,college,total_hours,cs_core_courses,x_required_courses,x_elective_requirements,additional_math_science,upper_division_hours,notes
+
+CS+ANSC,Computer Science + Animal Sciences,ACES,126,"CS100,CS124,CS128,CS173,CS222,CS225,CS233,CS341,CS357,CS361,CS374","ANSC100,ANSC221,ANSC222,ANSC223,ANSC224,ANSC398,ANSC498","Animal Sciences electives (choose from department list)","MATH220/221,MATH231,MATH225/257,CHEM102,CHEM103,CHEM104,CHEM105",40,"Requires science-heavy foundation. Higher total credit requirement than LAS majors."
+
+CS+ECON,Computer Science + Economics,LAS,120,"CS124,CS128,CS173,CS222,CS225,CS233,CS341,CS357,CS374","ECON102,ECON103,ECON202,ECON203,ECON302,ECON303","400-level ECON electives (as specified by department)","MATH220/221,MATH231,MATH241",40,"Strong quantitative focus. Requires advanced economics theory courses."
+
+CS+ANTH,Computer Science + Anthropology,LAS,120,"CS124,CS128,CS173,CS222,CS225,CS233,CS341,CS357,CS374","ANTH100,ANTH101,ANTH102","Advanced Anthropology electives (department approved)","MATH220/221,MATH231",40,"Blends computational analysis with cultural and social research."
+
+CS+ASTR,Computer Science + Astronomy,LAS,120,"CS124,CS128,CS173,CS222,CS225,CS233,CS341,CS357,CS374","ASTR100,ASTR122,ASTR310","Advanced Astronomy electives","MATH220/221,MATH231,MATH241,PHYS211,PHYS212",40,"Heavy physics and math integration."
+
+CS+CHEM,Computer Science + Chemistry,LAS,120,"CS124,CS128,CS173,CS222,CS225,CS233,CS341,CS357,CS374","CHEM102,CHEM103,CHEM104,CHEM105,CHEM232,CHEM233","Advanced Chemistry electives","MATH220/221,MATH231,MATH241",40,"Requires full chemistry sequence including labs."
+
+CS+GIS,Computer Science + Geography & GIS,LAS,120,"CS124,CS128,CS173,CS222,CS225,CS233,CS341,CS357,CS374","GGIS101,GGIS104,GGIS379","Advanced GIS electives","MATH220/221,MATH231",40,"Focus on spatial data and geographic information systems."
+
+CS+LING,Computer Science + Linguistics,LAS,120,"CS124,CS128,CS173,CS222,CS225,CS233,CS341,CS357,CS374","LING100,LING301","Advanced Linguistics electives","MATH220/221,MATH231",40,"Strong AI and NLP crossover potential."
+
+CS+MUSIC,Computer Science + Music,FAA,120,"CS124,CS128,CS173,CS222,CS225,CS233,CS341,CS357,CS374","MUS101,MUS107,MUS201","Advanced Music electives","MATH220/221,MATH231",40,"Combines computing with music theory and technology."
+
+CS+CPSC,Computer Science + Crop Sciences,ACES,126,"CS100,CS124,CS128,CS173,CS222,CS225,CS233,CS341,CS357,CS361,CS374","CPSC110,CPSC112","Advanced Crop Sciences electives","MATH220/221,MATH231,CHEM102,CHEM103",40,"Agricultural systems and computational modeling."
+
+CS+EDU-LS,Computer Science + Education (Learning Sciences),Education,120,"CS124,CS128,CS173,CS222,CS225,CS233,CS341,CS357,CS374","EPSY201,CI210","Education electives per program","MATH220/221,MATH231",40,"Focuses on computational tools for learning environments."
+
+CS+EDU-SE,Computer Science + Education (Secondary Education),Education,120,"CS124,CS128,CS173,CS222,CS225,CS233,CS341,CS357,CS374","CI401,CI403","Teaching practicum required","MATH220/221,MATH231",40,"Prepares students for high school CS teaching licensure."
+
+CS+PHYS,Computer Science + Physics,Engineering,128,"CS124,CS128,CS173,CS222,CS225,CS233,CS341,CS357,CS374","PHYS211,PHYS212,PHYS213,PHYS214,PHYS225,PHYS326","Advanced Physics electives (300-400 level, department approved)","MATH221,MATH231,MATH241,MATH285",40,"Highly math-intensive. Requires full calculus sequence, differential equations, and advanced physics labs."
+
+CS+BIOE,Computer Science + Bioengineering,Engineering,128,"CS124,CS128,CS173,CS222,CS225,CS233,CS341,CS357,CS374","BIOE120,BIOE201,BIOE202,BIOE205","Advanced Bioengineering electives (department approved technical electives)","MATH221,MATH231,MATH241,MATH285,CHEM102,CHEM103,PHYS211,PHYS212",40,"Strong foundation in biology, chemistry, physics, and differential equations. Designed for computational biology and medical systems."
+
+STAT+CS,Statistics & Computer Science,LAS,120,"CS124,CS128,CS173,CS222,CS225,CS233,CS341,CS357,CS374","STAT107,STAT200,STAT400,STAT410","Advanced Statistics electives (400-level STAT courses, department approved)","MATH220/221,MATH231,MATH241",40,"Strong focus on probability theory, statistical modeling, and data science. Excellent preparation for ML and analytics careers."
+
+MATH+CS,Mathematics & Computer Science,LAS,120,"CS124,CS128,CS173,CS222,CS225,CS233,CS341,CS357,CS374","MATH347,MATH416,MATH417","Advanced Mathematics electives (choose from approved 400-level MATH courses)","MATH221,MATH231,MATH241",40,"Heavy theoretical focus including abstract algebra and advanced linear algebra. Ideal for theory, cryptography, or graduate study."
