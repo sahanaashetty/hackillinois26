@@ -12,13 +12,18 @@
 <body>
   <div class="app">
     <header class="header">
-      <h1>UIUC Major Class Planner</h1>
-      <div class="major-select-row">
-        <label for="major-select" class="major-select-label">Major</label>
-        <select id="major-select" class="major-select"></select>
-        <a id="catalog-link" class="catalog-link" href="#" target="_blank" rel="noopener">Catalog</a>
+      <div class="header-left">
+        <h1>UIUC Major Class Planner</h1>
+        <div class="major-select-row">
+          <label for="major-select" class="major-select-label">Major</label>
+          <select id="major-select" class="major-select"></select>
+          <a id="catalog-link" class="catalog-link" href="#" target="_blank" rel="noopener">Catalog</a>
+        </div>
+        <p class="subtitle"><span id="subtitle-hours">128</span> hours · <a id="degree-req-link" href="#" target="_blank" rel="noopener">Degree Requirements</a> · <a id="sample-seq-link" href="#" target="_blank" rel="noopener">Sample Sequence</a></p>
       </div>
-      <p class="subtitle"><span id="subtitle-hours">128</span> hours · <a id="degree-req-link" href="#" target="_blank" rel="noopener">Degree Requirements</a> · <a id="sample-seq-link" href="#" target="_blank" rel="noopener">Sample Sequence</a></p>
+      <div class="header-actions">
+        <button type="button" id="replan-schedule-btn" class="btn-replan">Replan schedule</button>
+      </div>
     </header>
 
     <nav class="tabs">
@@ -30,35 +35,36 @@
     <main class="content">
       <!-- My Plan -->
       <section id="plan" class="panel active">
-        <div class="progress-card">
-          <h3>Progress</h3>
-          <div class="progress-stats" id="progress-stats">
-            <div class="stat"><span class="stat-value" id="total-hours">0</span><span class="stat-label" id="total-hours-label">/ 128 hrs</span></div>
-            <div class="stat"><span class="stat-value" id="core-done">0</span><span class="stat-label" id="core-done-label">/ 11 core</span></div>
-            <div class="stat stat-tech" id="stat-tech"><span class="stat-value" id="tech-elective-count">0</span><span class="stat-label">/ 6 tech electives</span></div>
-            <div class="stat stat-tech" id="stat-tech-hrs"><span class="stat-value" id="tech-elective-hrs">0</span><span class="stat-label">/ 18 tech hrs</span></div>
-            <div class="stat stat-adv" id="stat-adv"><span class="stat-value" id="adv-elective-count">0</span><span class="stat-label">/ 2 advanced</span></div>
-            <div class="stat stat-x" id="stat-x"><span class="stat-value" id="x-done">0</span><span class="stat-label" id="x-done-label">/ 0 X required</span></div>
+        <div class="plan-layout">
+          <div class="plan-left">
+            <div class="semesters" id="semesters"></div>
           </div>
-        </div>
-
-        <div class="semesters" id="semesters"></div>
-
-        <div class="replan-row">
-          <button type="button" id="replan-schedule-btn" class="btn-replan">Replan schedule</button>
-          <span class="replan-hint">Enforce prerequisite order and pack courses into semesters (adds semesters if needed).</span>
-        </div>
-
-        <div class="add-course">
-          <label>Add course to semester</label>
-          <div class="add-course-row">
-            <input id="course-select" list="course-options" placeholder="Search course..." />
-            <datalist id="course-options"></datalist>
-        
-            <select id="semester-select"></select>
-        
-            <button id="add-course-btn">Add</button>
-            <button id="clear-btn" class="btn-secondary">Clear Plan</button>
+          <div class="plan-right">
+            <div class="progress-card">
+              <h3>Progress</h3>
+              <div class="progress-pie-wrap">
+                <div class="progress-pie" id="progress-pie" role="img" aria-label="Completion percentage"></div>
+                <span class="progress-pie-pct" id="progress-pie-pct">0%</span>
+              </div>
+              <div class="progress-stats" id="progress-stats">
+                <div class="stat"><span class="stat-value" id="total-hours">0</span><span class="stat-label" id="total-hours-label">/ 128 hrs</span></div>
+                <div class="stat"><span class="stat-value" id="core-done">0</span><span class="stat-label" id="core-done-label">/ 11 core</span></div>
+                <div class="stat stat-tech" id="stat-tech"><span class="stat-value" id="tech-elective-count">0</span><span class="stat-label">/ 6 tech electives</span></div>
+                <div class="stat stat-tech" id="stat-tech-hrs"><span class="stat-value" id="tech-elective-hrs">0</span><span class="stat-label">/ 18 tech hrs</span></div>
+                <div class="stat stat-adv" id="stat-adv"><span class="stat-value" id="adv-elective-count">0</span><span class="stat-label">/ 2 advanced</span></div>
+                <div class="stat stat-x" id="stat-x"><span class="stat-value" id="x-done">0</span><span class="stat-label" id="x-done-label">/ 0 X required</span></div>
+              </div>
+            </div>
+            <div class="add-course">
+              <label>Add course to semester</label>
+              <div class="add-course-row">
+                <input id="course-select" list="course-options" placeholder="Search course..." />
+                <datalist id="course-options"></datalist>
+                <select id="semester-select"></select>
+                <button id="add-course-btn">Add class</button>
+                <button id="clear-btn" class="btn-secondary">Clear Plan</button>
+              </div>
+            </div>
           </div>
         </div>
 

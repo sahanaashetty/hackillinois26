@@ -881,6 +881,12 @@ function updateProgress() {
 
   document.getElementById('total-hours').textContent = totalHours;
   document.getElementById('core-done').textContent = coreDone;
+  const requiredHrs = (currentMajor && typeof currentMajor.totalHours === 'number') ? currentMajor.totalHours : 128;
+  const pct = requiredHrs > 0 ? Math.min(100, Math.round((totalHours / requiredHrs) * 100)) : 0;
+  const pieEl = document.getElementById('progress-pie');
+  const pctEl = document.getElementById('progress-pie-pct');
+  if (pieEl) pieEl.style.setProperty('--pct', pct + '%');
+  if (pctEl) pctEl.textContent = pct + '%';
   const tcEl = document.getElementById('tech-elective-count');
   const thEl = document.getElementById('tech-elective-hrs');
   const advEl = document.getElementById('adv-elective-count');
@@ -963,7 +969,6 @@ function bindButtons() {
       renderSemesters();
       updateProgress();
       savePlan();
-      showAlertModal('Schedule replanned. Prerequisite order enforced; each semester has at least ' + MIN_HOURS_PER_SEMESTER + ' hrs (max ' + MAX_HOURS_PER_SEMESTER + '). Total hours meet degree requirement. Free electives added as needed.');
     });
   }
 
