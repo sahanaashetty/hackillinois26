@@ -1,0 +1,17 @@
+major_code,major_name,college,total_hours,core_courses,science_math_foundation,major_electives,upper_division_hours,notes
+
+CE,Computer Engineering,Engineering,128,"ECE110,ECE120,CS173,CS225,ECE210,ECE313,ECE385,ECE391","MATH221,MATH231,MATH241,MATH257,MATH285,PHYS211,PHYS212,PHYS213,PHYS214","Advanced ECE/CS technical electives (400-level, department approved)",40,"Heavy hardware-software integration. Includes digital systems lab and computer systems engineering sequence."
+
+EE,Electrical Engineering,Engineering,128,"ECE110,ECE120,ECE210,ECE225,ECE265,ECE310,ECE311,ECE322,ECE340,ECE342,ECE313","MATH221,MATH231,MATH241,MATH257,MATH285,PHYS211,PHYS212","Advanced ECE technical electives in communications, electronics, signals, or power systems",40,"Focus on circuits, electronics, electromagnetics, and signal processing. Flexible specialization paths."
+
+ME,Mechanical Engineering,Engineering,128,"ME170,ME200,ME270,ME310,ME320,ECE205,ECE206","MATH221,MATH231,MATH241,MATH257,MATH285,PHYS211,PHYS212,CHEM102,CHEM103","Mechanical engineering technical electives (thermal sciences, mechanics, controls, manufacturing)",40,"Includes CAD, thermodynamics, fluid mechanics, and heat transfer. Senior capstone design required."
+
+CEE,Civil Engineering,Engineering,128,"CEE300,CEE310,CEE320,CEE330,CEE360,CEE380","MATH221,MATH231,MATH241,MATH257,MATH285,PHYS211,CHEM102","Civil engineering primary field electives (structural, environmental, transportation, geotechnical)",40,"Students select a specialization track within civil engineering. Senior design project required."
+
+AE,Aerospace Engineering,Engineering,128,"AE100,AE140,AE202,AE311,AE312,AE352,AE442,AE443","MATH221,MATH231,MATH241,MATH257,MATH285,PHYS211,PHYS212,CHEM102","Aerospace technical electives (aerodynamics, propulsion, structures, controls)",40,"Includes aerodynamics, propulsion, flight mechanics, and a two-semester capstone sequence."
+
+IE,Industrial Engineering,Engineering,128,"IE300,IE310,IE330,IE340,IE360,IE370","MATH221,MATH231,MATH241,MATH257,MATH285,PHYS211,STAT400","Industrial engineering electives (operations research, supply chain, data analytics, quality)",40,"Strong statistics and optimization focus. Includes operations research and systems modeling."
+
+CHE, Chemical Engineering,Engineering,128,"CHEM102,CHEM104,CHBE221,CHBE321,CHBE421,CHBE422","MATH221,MATH231,MATH241,MATH257,MATH285,PHYS211,PHYS212","Chemical engineering technical electives (transport, kinetics, biochemical, materials)",40,"Core includes transport phenomena, reaction engineering, and plant design sequence."
+
+BIOE,Bioengineering (Standalone),Engineering,128,"BIOE120,BIOE201,BIOE202,BIOE205,BIOE414","MATH221,MATH231,MATH241,MATH257,MATH285,PHYS211,PHYS212,CHEM102,CHEM103","Bioengineering electives (biomechanics, computational bio, imaging, systems biology)",40,"Interdisciplinary engineering degree integrating biology, computation, and medical systems."
