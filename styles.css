@@ -280,12 +280,46 @@ body {
   color: #ef4444;
 }
 
+.course-chip-link {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.course-chip-link:hover {
+  text-decoration: underline;
+}
+
+/* Prereq tooltip (larger hover box) */
+.prereq-tooltip {
+  position: fixed;
+  z-index: 1001;
+  max-width: 340px;
+  padding: 0.75rem 1rem;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--text);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.15s, visibility 0.15s;
+  white-space: pre-line;
+}
+
+.prereq-tooltip.prereq-tooltip-visible {
+  opacity: 1;
+  visibility: visible;
+}
+
 /* Add course */
 .add-course {
   margin-top: 1.5rem;
-  padding: 1rem;
+  padding: 1.25rem;
   background: var(--surface);
-  border: 1px dashed var(--border);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
 }
 
@@ -300,29 +334,35 @@ body {
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
+  align-items: center;
 }
 
+.add-course-row input,
 .add-course-row select {
   padding: 0.5rem 0.75rem;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius);
   background: var(--surface2);
   color: var(--text);
   font-family: var(--font);
   font-size: 0.9rem;
+}
+
+.add-course-row input#course-select {
+  min-width: 200px;
+  flex: 1;
+}
+
+.add-course-row select#semester-select {
   min-width: 140px;
 }
 
-.add-course-row select#course-select {
-  min-width: 180px;
-}
-
 #add-course-btn {
-  padding: 0.5rem 1rem;
+  padding: 0.5rem 1.25rem;
   background: var(--accent);
   color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius);
   font-family: var(--font);
   font-size: 0.9rem;
   font-weight: 500;
@@ -334,11 +374,11 @@ body {
 }
 
 .btn-secondary {
-  padding: 0.5rem 1rem;
+  padding: 0.5rem 1.25rem;
   background: var(--surface2);
   color: var(--text);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius);
   font-family: var(--font);
   font-size: 0.9rem;
   cursor: pointer;
@@ -674,4 +714,28 @@ body {
 
 .modal-btn-no:hover {
   background: var(--border);
+}
+
+.modal-actions-single {
+  justify-content: flex-end;
+}
+
+.modal-btn-ok {
+  background: var(--accent);
+  color: white;
+  padding: 0.5rem 1.25rem;
+  border-radius: 6px;
+  font-family: var(--font);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+}
+
+.modal-btn-ok:hover {
+  background: var(--accent-hover);
+}
+
+#alert-modal .modal-message {
+  white-space: pre-line;
 }

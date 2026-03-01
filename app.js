@@ -100,6 +100,25 @@ function isTeamProject(code) {
   return TEAM_PROJECT_COURSES.includes(code);
 }
 
+function getCourseUrl(code) {
+  if (!code || typeof code !== 'string') return null;
+  const trimmed = code.trim();
+  if (!trimmed) return null;
+  const match = trimmed.match(/^([A-Za-z]+)\s*(\d{3,})$/) || trimmed.match(/^([A-Za-z]+)(\d{3,})$/);
+  if (!match) return null;
+  const dept = match[1].toUpperCase();
+  const num = match[2];
+  return `https://courses.illinois.edu/search/?P=${encodeURIComponent(dept + ' ' + num)}`;
+}
+
+function escapeAttr(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
 // State: 8 semesters, each is array of { code, name?, hours? }
 let plan = Array.from({ length: 8 }, () => []);
 
@@ -215,14 +234,18 @@ function renderSemesters() {
     const chips = (courses || []).map((c, j) => {
       const code = c.code;
       const hrs = c.hours ?? getHours(code);
-      const tooltip = getPrereqTooltip(code, i).replace(/"/g, '&quot;');
+      const tooltipText = getPrereqTooltip(code, i);
       const removeBtn = locked
         ? ''
         : `<button type="button" class="remove" aria-label="Remove">×</button>`;
+      const courseUrl = getCourseUrl(code);
+      const codeDisplay = courseUrl
+        ? `<a href="${courseUrl}" class="course-chip-link" target="_blank" rel="noopener">${code}</a>`
+        : `<span>${code}</span>`;
 
       return `
-        <div class="course-chip" data-sem="${i}" data-idx="${j}" title="${tooltip}">
-          <span>${code}</span>
+        <div class="course-chip" data-sem="${i}" data-idx="${j}" data-prereq-tooltip="${escapeAttr(tooltipText)}">
+          <span class="course-chip-code">${codeDisplay}</span>
           <div class="right">
             <span class="hours">${hrs}h</span>
             ${removeBtn}
@@ -308,6 +331,27 @@ function renderSemesters() {
       }
     });
   });
+
+  bindPrereqTooltips(container);
+}
+
+function bindPrereqTooltips(container) {
+  const tooltipEl = document.getElementById('prereq-tooltip');
+  if (!tooltipEl) return;
+  container.querySelectorAll('.course-chip[data-prereq-tooltip]').forEach(chip => {
+    const text = chip.getAttribute('data-prereq-tooltip');
+    if (!text) return;
+    chip.addEventListener('mouseenter', () => {
+      tooltipEl.textContent = text.replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+      tooltipEl.classList.add('prereq-tooltip-visible');
+      const rect = chip.getBoundingClientRect();
+      tooltipEl.style.left = `${rect.left}px`;
+      tooltipEl.style.top = `${rect.bottom + 6}px`;
+    });
+    chip.addEventListener('mouseleave', () => {
+      tooltipEl.classList.remove('prereq-tooltip-visible');
+    });
+  });
 }
 
 function showCurrentSemesterModal() {
@@ -317,6 +361,66 @@ function showCurrentSemesterModal() {
       resolve(confirm('Is this your current semester?'));
       return;
     }
+    modal.classList.add('modal-open');
+    modal.setAttribute('aria-hidden', 'false');
+
+    function close(result) {
+      modal.classList.remove('modal-open');
+      modal.setAttribute('aria-hidden', 'true');
+      modal.querySelector('.modal-backdrop').removeEventListener('click', onBackdrop);
+      modal.querySelector('.modal-btn-yes').removeEventListener('click', onYes);
+      modal.querySelector('.modal-btn-no').removeEventListener('click', onNo);
+      resolve(result);
+    }
+
+    function onYes() { close(true); }
+    function onNo() { close(false); }
+    function onBackdrop() { close(false); }
+
+    modal.querySelector('.modal-btn-yes').addEventListener('click', onYes);
+    modal.querySelector('.modal-btn-no').addEventListener('click', onNo);
+    modal.querySelector('.modal-backdrop').addEventListener('click', onBackdrop);
+  });
+}
+
+function showAlertModal(message) {
+  return new Promise((resolve) => {
+    const modal = document.getElementById('alert-modal');
+    const messageEl = document.getElementById('alert-modal-message');
+    if (!modal || !messageEl) {
+      alert(message);
+      resolve();
+      return;
+    }
+    messageEl.textContent = message;
+    modal.classList.add('modal-open');
+    modal.setAttribute('aria-hidden', 'false');
+
+    function close() {
+      modal.classList.remove('modal-open');
+      modal.setAttribute('aria-hidden', 'true');
+      modal.querySelector('.modal-backdrop').removeEventListener('click', onBackdrop);
+      modal.querySelector('.modal-btn-ok').removeEventListener('click', onOk);
+      resolve();
+    }
+
+    function onOk() { close(); }
+    function onBackdrop() { close(); }
+
+    modal.querySelector('.modal-btn-ok').addEventListener('click', onOk);
+    modal.querySelector('.modal-backdrop').addEventListener('click', onBackdrop);
+  });
+}
+
+function showConfirmModal(message) {
+  return new Promise((resolve) => {
+    const modal = document.getElementById('confirm-modal');
+    const messageEl = document.getElementById('confirm-modal-message');
+    if (!modal || !messageEl) {
+      resolve(confirm(message));
+      return;
+    }
+    messageEl.textContent = message;
     modal.classList.add('modal-open');
     modal.setAttribute('aria-hidden', 'false');
 
@@ -378,14 +482,20 @@ function bindButtons() {
   const addBtn = document.getElementById('add-course-btn');
   const clearBtn = document.getElementById('clear-btn');
   if (addBtn) {
-    addBtn.addEventListener('click', () => {
-      const code = document.getElementById('course-select').value.trim();
+    addBtn.addEventListener('click', async () => {
+      const raw = document.getElementById('course-select').value.trim();
+      const code = normalizeCourseCode(raw);
       const semIdx = parseInt(document.getElementById('semester-select').value, 10);
 
-      if (!code) return;
+      if (!raw) return;
+
+      if (!COURSE_BY_CODE[code] && !code.match(/^[A-Z]+\s*\d{3,}$/)) {
+        await showAlertModal('Course not found. Use the search to pick a course from the list (e.g. CS 407, MATH 221).');
+        return;
+      }
 
       if (isSemesterLocked(semIdx)) {
-        alert('That semester is locked. Click the lock icon on that semester to unlock it for editing.');
+        showAlertModal('That semester is locked. Click the lock icon on that semester to unlock it for editing.');
         return;
       }
 
@@ -393,7 +503,7 @@ function bindButtons() {
       if (PREREQS_LOADED && !prereqsSatisfied(code, semIdx)) {
         const msg = prereqsMissingMessage(code, semIdx);
         if (msg) {
-          alert(`Cannot add ${code}.\nMissing prerequisite(s) — add to an earlier semester first: ${msg}`);
+          showAlertModal(`Cannot add ${code}.\nMissing prerequisite(s) — add to an earlier semester first: ${msg}`);
           return;
         }
       }
@@ -409,8 +519,9 @@ function bindButtons() {
   }
 
   if (clearBtn) {
-    clearBtn.addEventListener('click', () => {
-      if (confirm('Clear your entire plan?')) {
+    clearBtn.addEventListener('click', async () => {
+      const ok = await showConfirmModal('Clear your entire plan?');
+      if (ok) {
         plan = Array.from({ length: 8 }, () => []);
         renderSemesters();
         updateProgress();
@@ -420,8 +531,9 @@ function bindButtons() {
   }
 
   document.querySelectorAll('.use-sample-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      if (confirm('Replace your current plan with the sample sequence?')) {
+    btn.addEventListener('click', async () => {
+      const ok = await showConfirmModal('Replace your current plan with the sample sequence?');
+      if (ok) {
         loadSampleIntoPlan();
       }
     });
