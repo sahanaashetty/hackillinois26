@@ -298,6 +298,33 @@ body {
   background: var(--border);
 }
 
+/* Sample sequence at bottom of My Plan */
+.plan-sample-section {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.plan-sample-heading {
+  margin: 0 0 0.25rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.plan-sample-note {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.plan-sample-section .use-sample-btn {
+  margin-bottom: 1rem;
+}
+
+.plan-sample-section .sample-sequence {
+  margin-top: 0;
+}
+
 /* Requirements panel */
 .req-intro {
   font-size: 0.9rem;

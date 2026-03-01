@@ -271,8 +271,6 @@ function populateDropdowns() {
 function bindButtons() {
   const addBtn = document.getElementById('add-course-btn');
   const clearBtn = document.getElementById('clear-btn');
-  const sampleBtn = document.getElementById('use-sample-btn');
-
   if (addBtn) {
     addBtn.addEventListener('click', () => {
       const code = document.getElementById('course-select').value.trim();
@@ -310,13 +308,13 @@ function bindButtons() {
     });
   }
 
-  if (sampleBtn) {
-    sampleBtn.addEventListener('click', () => {
+  document.querySelectorAll('.use-sample-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
       if (confirm('Replace your current plan with the sample sequence?')) {
         loadSampleIntoPlan();
       }
     });
-  }
+  });
 
   document.querySelectorAll('.tab').forEach(tab => {
     tab.addEventListener('click', () => {
@@ -343,14 +341,11 @@ function renderRequirements() {
   }).join('');
 }
 
-function renderSampleSequence() {
-  const el = document.getElementById('sample-sequence');
-  if (!el) return;
-  // Catalog layout: Fall left, Spring right; courses vertical. Group by year.
+function getSampleSequenceHTML() {
   const years = [1, 2, 3, 4];
   const fallHours = [16, 16, 16, 16];
   const springHours = [15, 17, 16, 16];
-  el.innerHTML = years.map((year, yi) => {
+  return years.map((year, yi) => {
     const fall = SAMPLE_SEQUENCE.find(s => s.year === year && s.semester === 'Fall');
     const spring = SAMPLE_SEQUENCE.find(s => s.year === year && s.semester === 'Spring');
     const fallCourses = (fall && fall.courses) ? fall.courses.map(c => `<div class="sample-course">${c}</div>`).join('') : '';
@@ -372,6 +367,14 @@ function renderSampleSequence() {
         </div>
       </div>`;
   }).join('');
+}
+
+function renderSampleSequence() {
+  const html = getSampleSequenceHTML();
+  const el = document.getElementById('sample-sequence');
+  const planEl = document.getElementById('plan-sample-sequence');
+  if (el) el.innerHTML = html;
+  if (planEl) planEl.innerHTML = html;
 }
 
 async function init() {
