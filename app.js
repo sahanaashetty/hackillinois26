@@ -18,6 +18,33 @@ function normalizeCourseCode(raw) {
   return m ? `${m[1].toUpperCase()} ${m[2]}` : (raw || '').trim();
 }
 
+// Never use a prereq-group string (e.g. "[[ CS 124,CS 125 ]]") as a course code. Use first actual course code only.
+function ensureCourseCode(value) {
+  if (!value || typeof value !== 'string') return value;
+  const s = value.trim();
+  if (!s.includes('[') && /^[A-Za-z]+\s+\d+$/.test(s)) return normalizeCourseCode(s);
+  const first = s.match(/[A-Za-z]+\s+\d{3}/);
+  return first ? normalizeCourseCode(first[0]) : s;
+}
+
+// Parse prereq_groups from CSV: [] = none; [[ "A","B" ], [ "C" ]] = (A or B) and (C). One course per bracket group required.
+function parsePrereqGroups(prereqStr) {
+  let s = (prereqStr || '').trim();
+  if (!s || s === '[]' || s === '[[]]' || /^\[\s*\]\s*$/.test(s)) return [];
+  s = s.replace(/""/g, '"');
+  let inner = s.replace(/^\s*\[\s*\[\s*/, '').replace(/\s*\]\s*\]\s*$/, '');
+  if (!inner) return [];
+  const groups = [];
+  const parts = inner.split(/\]\s*,\s*\[/);
+  for (const part of parts) {
+    const raw = part.trim().replace(/^\s*\[?|\]?\s*$/g, '');
+    const codes = raw.split(',').map(c => normalizeCourseCode(c.trim().replace(/^["']|["']$/g, ''))).filter(Boolean);
+    const valid = codes.filter(c => /^[A-Za-z]+\s+\d+$/.test(c));
+    if (valid.length > 0) groups.push(valid);
+  }
+  return groups;
+}
+
 async function loadPrerequisites() {
   try {
     const res = await fetch('cs_prerequisites_uiuc.csv');
@@ -29,19 +56,15 @@ async function loadPrerequisites() {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       const cols = parseCSVLine(line);
-      if (i === 0 && (cols[0] || '').toLowerCase() === 'course') continue;
+      if (i === 0 && (cols[0] || '').toLowerCase().startsWith('course')) continue;
       const courseRaw = (cols[0] || '').trim();
       if (!courseRaw) continue;
 
       const course = normalizeCourseCode(courseRaw);
       const prereqStr = (cols[1] || '').trim();
-      if (!prereqStr || /^varies$/i.test(prereqStr)) continue;
+      if (/^varies$/i.test(prereqStr)) continue;
 
-      // Groups separated by " || " (AND); within group "|" (OR)
-      const groups = prereqStr.split(/\s*\|\|\s*/).map(g => 
-        g.split('|').map(s => normalizeCourseCode(s.trim())).filter(Boolean)
-      ).filter(g => g.length > 0);
-
+      const groups = parsePrereqGroups(prereqStr);
       if (groups.length > 0) PREREQ_MAP[course] = groups;
     }
 
@@ -143,6 +166,9 @@ function escapeAttr(s) {
 // State: 8 semesters, each is array of { code, name?, hours? }
 let plan = Array.from({ length: 8 }, () => []);
 
+// When user deletes a course, store here so replan can put it in the next semester after where it was deleted
+let lastDeleted = null;
+
 // Current semester (0-7) and which past semesters are unlocked for editing
 const SETTINGS_KEY = STORAGE_KEY + '-settings';
 let currentSemesterIndex = null; // null until user sets it
@@ -224,7 +250,8 @@ function replanSchedule() {
   const all = [];
   for (let s = 0; s < plan.length; s++) {
     (plan[s] || []).forEach(c => {
-      all.push({ code: c.code, hours: c.hours ?? getHours(c.code), currentSem: s });
+      const code = ensureCourseCode(c.code);
+      all.push({ code, hours: c.hours ?? getHours(code), currentSem: s });
     });
   }
 
@@ -237,7 +264,7 @@ function replanSchedule() {
     if (!groups) continue;
     for (const grp of groups) {
       if (grp.some(p => codesInPlan.has(p))) continue;
-      if (grp.length > 0) missing.add(grp[0]);
+      if (grp.length > 0) missing.add(ensureCourseCode(grp[0]));
     }
   }
   let changed;
@@ -248,9 +275,12 @@ function replanSchedule() {
       if (!groups) continue;
       for (const grp of groups) {
         const hasFromGroup = grp.some(p => codesInPlan.has(p) || missing.has(p));
-        if (!hasFromGroup && grp.length > 0 && !missing.has(grp[0])) {
-          missing.add(grp[0]);
-          changed = true;
+        if (!hasFromGroup && grp.length > 0) {
+          const toAdd = ensureCourseCode(grp[0]);
+          if (!missing.has(toAdd)) {
+            missing.add(toAdd);
+            changed = true;
+          }
         }
       }
     }
@@ -259,8 +289,9 @@ function replanSchedule() {
   // 2) Inserted = missing prereqs not already in plan. Affected = inserted + transitive postrequisites (in plan)
   const inserted = new Set();
   for (const code of missing) {
-    if (all.some(x => x.code === code)) continue;
-    inserted.add(code);
+    const safe = ensureCourseCode(code);
+    if (all.some(x => x.code === safe)) continue;
+    inserted.add(safe);
   }
   const affected = new Set(inserted);
   do {
@@ -298,8 +329,10 @@ function replanSchedule() {
     return codeToSem[p];
   }
 
+  const nextSemAfterDeleted = (lastDeleted && lastDeleted.code) ? lastDeleted.fromSem + 1 : 1;
+
   function earliestSem(code, assignmentSoFar) {
-    if (inserted.has(code)) return 1;
+    if (inserted.has(code)) return (lastDeleted && lastDeleted.code === code) ? nextSemAfterDeleted : 1;
     const groups = PREREQ_MAP[code];
     if (!groups || groups.length === 0) return 0;
     let e = 0;
@@ -350,17 +383,21 @@ function replanSchedule() {
 
   const newPlan = [];
   for (let i = 0; i < numSems; i++) {
-    newPlan[i] = (fixed.filter(x => x.currentSem === i).map(({ code, hours }) => ({ code, hours: hours ?? getHours(code) }))).slice();
+    newPlan[i] = fixed.filter(x => x.currentSem === i).map(({ code, hours }) => {
+      const safe = ensureCourseCode(code);
+      return { code: safe, hours: hours ?? getHours(safe) };
+    });
   }
   const maxAssigned = Math.max(0, ...Object.values(assignment));
   while (newPlan.length <= maxAssigned) newPlan.push([]);
   affectedList.forEach(({ code, hours }) => {
     const s = assignment[code];
-    newPlan[s].push({ code, hours: hours ?? getHours(code) });
+    if (typeof s === 'number') newPlan[s].push({ code, hours: hours ?? getHours(code) });
   });
 
   plan.length = 0;
   for (let i = 0; i < newPlan.length; i++) plan.push(newPlan[i]);
+  lastDeleted = null;
 }
 
 function loadPlan() {
@@ -370,7 +407,10 @@ function loadPlan() {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length >= 8) {
-        plan = parsed.map(sem => Array.isArray(sem) ? sem.map(c => typeof c === 'string' ? { code: c, hours: getHours(c) } : { ...c, hours: c.hours ?? getHours(c.code) }) : []);
+        plan = parsed.map(sem => Array.isArray(sem) ? sem.map(c => {
+          const code = ensureCourseCode(typeof c === 'string' ? c : (c && c.code));
+          return { code, hours: (c && c.hours) ?? getHours(code) };
+        }) : []);
       }
     }
     const settingsRaw = localStorage.getItem(SETTINGS_KEY);
@@ -531,6 +571,8 @@ function renderSemesters() {
       const sem = Number(chip.dataset.sem);
       const idx = Number(chip.dataset.idx);
       if (isSemesterLocked(sem)) return;
+      const removed = (plan[sem] || [])[idx];
+      if (removed) lastDeleted = { code: removed.code, fromSem: sem };
       plan[sem].splice(idx, 1);
       renderSemesters();
       updateProgress();
@@ -953,7 +995,7 @@ function loadSampleIntoPlan() {
       const match = label.match(/[A-Z]+ \d{3}|Science elective|Free elective|Gen Ed|Composition I|Language/);
       if (!match) return;
 
-      const code = match[0];
+      const code = ensureCourseCode(match[0]);
       plan[semIdx].push({ code, hours: getHours(code) });
     });
   });
