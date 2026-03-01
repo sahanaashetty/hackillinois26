@@ -103,6 +103,11 @@ function isTeamProject(code) {
 // State: 8 semesters, each is array of { code, name?, hours? }
 let plan = Array.from({ length: 8 }, () => []);
 
+// Current semester (0-7) and which past semesters are unlocked for editing
+const SETTINGS_KEY = STORAGE_KEY + '-settings';
+let currentSemesterIndex = null; // null until user sets it
+let unlockedPastSemesters = []; // indices of past semesters user has unlocked
+
 function getCoursesBeforeSemester(semIdx) {
   const taken = new Set();
   for (let i = 0; i < semIdx; i++) {
@@ -158,11 +163,36 @@ function loadPlan() {
         plan = parsed.map(sem => Array.isArray(sem) ? sem.map(c => typeof c === 'string' ? { code: c, hours: getHours(c) } : { ...c, hours: c.hours ?? getHours(c.code) }) : []);
       }
     }
+    const settingsRaw = localStorage.getItem(SETTINGS_KEY);
+    if (settingsRaw) {
+      const s = JSON.parse(settingsRaw);
+      if (typeof s.currentSemesterIndex === 'number' && s.currentSemesterIndex >= 0 && s.currentSemesterIndex <= 7) {
+        currentSemesterIndex = s.currentSemesterIndex;
+      }
+      if (Array.isArray(s.unlockedPastSemesters)) {
+        unlockedPastSemesters = s.unlockedPastSemesters.filter(i => typeof i === 'number' && i >= 0 && i < 8);
+      }
+    }
   } catch (_) {}
 }
 
 function savePlan() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(plan));
+}
+
+function saveSettings() {
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify({
+    currentSemesterIndex,
+    unlockedPastSemesters,
+  }));
+}
+
+function isPastSemester(i) {
+  return currentSemesterIndex !== null && i < currentSemesterIndex;
+}
+
+function isSemesterLocked(i) {
+  return isPastSemester(i) && !unlockedPastSemesters.includes(i);
 }
 
 function semesterLabel(i) {
@@ -177,27 +207,41 @@ function renderSemesters() {
 
   function semesterHTML(courses, i) {
     const hours = (courses || []).reduce((sum, c) => sum + (c.hours ?? getHours(c.code)), 0);
+    const past = isPastSemester(i);
+    const locked = isSemesterLocked(i);
+    const lockLabel = locked ? 'Unlock to edit' : 'Lock semester';
+    const lockIcon = locked ? '&#128274;' : '&#128275;'; // locked / unlocked
 
     const chips = (courses || []).map((c, j) => {
       const code = c.code;
       const hrs = c.hours ?? getHours(code);
-       const tooltip = getPrereqTooltip(code, i).replace(/"/g, '&quot;');
+      const tooltip = getPrereqTooltip(code, i).replace(/"/g, '&quot;');
+      const removeBtn = locked
+        ? ''
+        : `<button type="button" class="remove" aria-label="Remove">×</button>`;
 
       return `
         <div class="course-chip" data-sem="${i}" data-idx="${j}" title="${tooltip}">
           <span>${code}</span>
           <div class="right">
             <span class="hours">${hrs}h</span>
-            <button type="button" class="remove">×</button>
+            ${removeBtn}
           </div>
         </div>
       `;
     }).join('');
 
+    const cardClasses = ['semester-card'];
+    if (past) cardClasses.push('past-semester');
+    if (locked) cardClasses.push('locked');
+
     return `
-      <div class="semester-card">
+      <div class="${cardClasses.join(' ')}" data-semester="${i}">
         <div class="semester-header">
-          <span>${semesterLabel(i)}</span>
+          <div class="semester-header-left">
+            ${past ? `<button type="button" class="lock-btn" data-semester="${i}" title="${lockLabel}" aria-label="${lockLabel}">${lockIcon}</button>` : ''}
+            <span class="semester-title">${semesterLabel(i)}</span>
+          </div>
           <span class="semester-hours">${hours} hrs</span>
         </div>
         <div class="semester-courses">
@@ -223,22 +267,84 @@ function renderSemesters() {
   container.innerHTML = html;
 
   container.querySelectorAll('.remove').forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
       const chip = btn.closest('.course-chip');
       const sem = Number(chip.dataset.sem);
       const idx = Number(chip.dataset.idx);
-
+      if (isSemesterLocked(sem)) return;
       plan[sem].splice(idx, 1);
       renderSemesters();
       updateProgress();
       savePlan();
     });
   });
+
+  container.querySelectorAll('.lock-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const i = Number(btn.dataset.semester);
+      if (unlockedPastSemesters.includes(i)) {
+        unlockedPastSemesters = unlockedPastSemesters.filter(x => x !== i);
+      } else {
+        unlockedPastSemesters = [...unlockedPastSemesters, i].sort((a, b) => a - b);
+      }
+      saveSettings();
+      renderSemesters();
+    });
+  });
+
+  container.querySelectorAll('.semester-title').forEach(titleEl => {
+    titleEl.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const card = titleEl.closest('.semester-card');
+      if (!card) return;
+      const i = Number(card.dataset.semester);
+      const setCurrent = await showCurrentSemesterModal();
+      if (setCurrent) {
+        currentSemesterIndex = i;
+        saveSettings();
+        renderSemesters();
+      }
+    });
+  });
+}
+
+function showCurrentSemesterModal() {
+  return new Promise((resolve) => {
+    const modal = document.getElementById('current-semester-modal');
+    if (!modal) {
+      resolve(confirm('Is this your current semester?'));
+      return;
+    }
+    modal.classList.add('modal-open');
+    modal.setAttribute('aria-hidden', 'false');
+
+    function close(result) {
+      modal.classList.remove('modal-open');
+      modal.setAttribute('aria-hidden', 'true');
+      modal.querySelector('.modal-backdrop').removeEventListener('click', onBackdrop);
+      modal.querySelector('.modal-btn-yes').removeEventListener('click', onYes);
+      modal.querySelector('.modal-btn-no').removeEventListener('click', onNo);
+      resolve(result);
+    }
+
+    function onYes() { close(true); }
+    function onNo() { close(false); }
+    function onBackdrop() { close(false); }
+
+    modal.querySelector('.modal-btn-yes').addEventListener('click', onYes);
+    modal.querySelector('.modal-btn-no').addEventListener('click', onNo);
+    modal.querySelector('.modal-backdrop').addEventListener('click', onBackdrop);
+  });
 }
 
 function updateProgress() {
-  const allCourses = plan.flat().map(c => c.code);
-  const totalHours = plan.flat().reduce((sum, c) => sum + (c.hours ?? getHours(c.code)), 0);
+  // Only count courses in completed or in-progress semesters (up to and including current)
+  const lastCountedIndex = currentSemesterIndex !== null ? currentSemesterIndex : 7;
+  const coursesForProgress = plan.slice(0, lastCountedIndex + 1).flat();
+  const allCourses = coursesForProgress.map(c => c.code);
+  const totalHours = coursesForProgress.reduce((sum, c) => sum + (c.hours ?? getHours(c.code)), 0);
   const coreDone = allCourses.filter(isCoreCS).length;
   const techCodes = allCourses.filter(isTechElective);
   const techCount = techCodes.length;
@@ -277,6 +383,11 @@ function bindButtons() {
       const semIdx = parseInt(document.getElementById('semester-select').value, 10);
 
       if (!code) return;
+
+      if (isSemesterLocked(semIdx)) {
+        alert('That semester is locked. Click the lock icon on that semester to unlock it for editing.');
+        return;
+      }
 
       // Enforce prerequisites from cs_prerequisites_uiuc.csv
       if (PREREQS_LOADED && !prereqsSatisfied(code, semIdx)) {
