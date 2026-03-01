@@ -66,10 +66,16 @@
               </div>
             </div>
             <div class="tech-electives-by-category">
-              <h3>Technical electives by category</h3>
-              <label for="tech-category-select">Select categories (Ctrl+Click for multiple)</label>
-              <select id="tech-category-select" multiple size="7" aria-label="Select one or more elective categories"></select>
-              <div id="tech-electives-list" class="tech-electives-list"></div>
+              <div class="tech-electives-header">
+                <h3>Technical electives by category</h3>
+              </div>
+              <div class="tech-electives-body">
+                <label for="tech-category-select">Select categories (Ctrl+Click for multiple)</label>
+                <select id="tech-category-select" multiple size="7" aria-label="Select one or more elective categories"></select>
+                <button type="button" id="add-technicals-btn" class="btn-replan">Add technicals</button>
+                <button type="button" id="add-advanced-btn" class="btn-replan">Add advanced</button>
+                <div id="tech-electives-list" class="tech-electives-list"></div>
+              </div>
             </div>
           </div>
         </div>

@@ -133,6 +133,140 @@ function initTechElectivesUI() {
   sel.innerHTML = categories.map(cat => `<option value="${escapeHtml(cat)}">${escapeHtml(cat)}</option>`).join('');
   sel.addEventListener('change', renderTechElectivesList);
   renderTechElectivesList();
+
+  const addTechnicalsBtn = document.getElementById('add-technicals-btn');
+  if (addTechnicalsBtn) {
+    addTechnicalsBtn.addEventListener('click', fillTechnicalElectivesFromCategories);
+  }
+  const addAdvancedBtn = document.getElementById('add-advanced-btn');
+  if (addAdvancedBtn) {
+    addAdvancedBtn.addEventListener('click', fillAdvancedElectivesFromCategories);
+  }
+}
+
+function fillTechnicalElectivesFromCategories() {
+  const sel = document.getElementById('tech-category-select');
+  if (!sel) return;
+  const selectedCategories = Array.from(sel.selectedOptions || []).map(opt => opt.value);
+  if (selectedCategories.length === 0) {
+    showAlertModal('Select at least one category above, then click Add technicals.');
+    return;
+  }
+
+  const byCategory = TECH_ELECTIVES_BY_CATEGORY || {};
+  const pool = [];
+  const seen = new Set();
+  selectedCategories.forEach(cat => {
+    (byCategory[cat] || []).forEach(code => {
+      if (!seen.has(code)) {
+        seen.add(code);
+        pool.push(code);
+      }
+    });
+  });
+  if (pool.length === 0) {
+    showAlertModal('No courses in selected categories.');
+    return;
+  }
+
+  const usedInPlan = new Set();
+  for (let s = 0; s < plan.length; s++) {
+    (plan[s] || []).forEach(c => {
+      if (c.code !== 'CS Technical elective') usedInPlan.add(c.code);
+    });
+  }
+
+  for (let semIdx = 0; semIdx < plan.length; semIdx++) {
+    const sem = plan[semIdx];
+    if (!Array.isArray(sem)) continue;
+    let semHours = sem.reduce((sum, c) => sum + (c.hours ?? getHours(c.code)), 0);
+
+    for (let j = 0; j < sem.length; j++) {
+      if (sem[j].code !== 'CS Technical elective') continue;
+
+      const taken = getCoursesBeforeSemester(semIdx);
+      const candidates = pool.filter(code => {
+        if (usedInPlan.has(code)) return false;
+        if (!prereqsSatisfied(code, semIdx)) return false;
+        const newHours = semHours - 3 + getHours(code);
+        if (newHours > MAX_HOURS_PER_SEMESTER) return false;
+        return true;
+      });
+
+      if (candidates.length === 0) continue;
+      const chosen = candidates[0];
+      const hours = getHours(chosen);
+      plan[semIdx][j] = { code: chosen, hours };
+      usedInPlan.add(chosen);
+      semHours = semHours - 3 + hours;
+    }
+  }
+
+  renderSemesters();
+  updateProgress();
+  savePlan();
+}
+
+function fillAdvancedElectivesFromCategories() {
+  const sel = document.getElementById('tech-category-select');
+  if (!sel) return;
+  const selectedCategories = Array.from(sel.selectedOptions || []).map(opt => opt.value);
+  if (selectedCategories.length === 0) {
+    showAlertModal('Select at least one category above, then click Add advanced.');
+    return;
+  }
+
+  const byCategory = TECH_ELECTIVES_BY_CATEGORY || {};
+  const pool = [];
+  const seen = new Set();
+  selectedCategories.forEach(cat => {
+    (byCategory[cat] || []).forEach(code => {
+      if (!seen.has(code)) {
+        seen.add(code);
+        pool.push(code);
+      }
+    });
+  });
+  if (pool.length === 0) {
+    showAlertModal('No courses in selected categories.');
+    return;
+  }
+
+  const usedInPlan = new Set();
+  for (let s = 0; s < plan.length; s++) {
+    (plan[s] || []).forEach(c => {
+      if (c.code !== 'CS Advanced elective') usedInPlan.add(c.code);
+    });
+  }
+
+  for (let semIdx = 0; semIdx < plan.length; semIdx++) {
+    const sem = plan[semIdx];
+    if (!Array.isArray(sem)) continue;
+    let semHours = sem.reduce((sum, c) => sum + (c.hours ?? getHours(c.code)), 0);
+
+    for (let j = 0; j < sem.length; j++) {
+      if (sem[j].code !== 'CS Advanced elective') continue;
+
+      const candidates = pool.filter(code => {
+        if (usedInPlan.has(code)) return false;
+        if (!prereqsSatisfied(code, semIdx)) return false;
+        const newHours = semHours - 3 + getHours(code);
+        if (newHours > MAX_HOURS_PER_SEMESTER) return false;
+        return true;
+      });
+
+      if (candidates.length === 0) continue;
+      const chosen = candidates[0];
+      const hours = getHours(chosen);
+      plan[semIdx][j] = { code: chosen, hours };
+      usedInPlan.add(chosen);
+      semHours = semHours - 3 + hours;
+    }
+  }
+
+  renderSemesters();
+  updateProgress();
+  savePlan();
 }
 
 function renderTechElectivesList() {
